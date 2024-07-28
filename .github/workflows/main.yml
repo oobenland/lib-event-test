@@ -15,5 +15,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Set up Maven
         run: echo "MAVEN_OPTS=-Dhttps.protocols=TLSv1.2 -Dmaven.repo.local=$GITHUB_WORKSPACE/.m2/repository -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN -Dorg.slf4j.simpleLogger.showDateTime=true -Djava.awt.headless=true" >> $GITHUB_ENV
-      - name: Build with Maven
-        run: ./mvnw -Drevision=${{ github.run_id }} --batch-mode --errors --settings settings.xml clean package -Dmaven.profile
+      - name: Build
+        run: ./mvnw -Drevision=${{ github.run_id }} --batch-mode --errors --settings settings.xml clean compile -Dmaven.profile
+      - name: Test
+        run: ./mvnw -Drevision=${{ github.run_id }} --batch-mode --errors --settings settings.xml clean test -Dmaven.profile
