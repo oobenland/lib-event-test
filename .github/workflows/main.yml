@@ -18,4 +18,4 @@ jobs:
       - name: Build
         run: ./mvnw -Drevision=${{ github.run_id }} --batch-mode --errors --settings settings.xml clean compile -Dmaven.profile
       - name: Test
-        run: ./mvnw -Drevision=${{ github.run_id }} --batch-mode --errors --settings settings.xml clean test -Dmaven.profile
+        run: ./mvnw -Drevision=${{ github.run_id }} --batch-mode --errors --settings settings.xml test -Dmaven.profile
