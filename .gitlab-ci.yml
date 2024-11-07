@@ -6,7 +6,7 @@ test:
     stage: test
     image: eclipse-temurin:22-jdk-alpine
     script:
-        - ./mvnw -Drevision=$CI_PIPELINE_ID --batch-mode --errors --settings settings.xml clean package -Dmaven.profile
+        - ./mvnw -Drevision=$CI_PIPELINE_ID --batch-mode --errors --settings settings.xml clean package -Dmaven.profile -Dmaven.compiler.proc=full
     variables:
         MAVEN_OPTS: "-Dhttps.protocols=TLSv1.2 -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN -Dorg.slf4j.simpleLogger.showDateTime=true -Djava.awt.headless=true"
     cache:
@@ -17,7 +17,7 @@ deploy:
     stage: deploy
     image: eclipse-temurin:22-jdk-alpine
     script:
-        - ./mvnw -Drevision=$CI_PIPELINE_ID --batch-mode --errors --settings settings.xml deploy -Dmaven.profile -DskipTests -Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true
+        - ./mvnw -Drevision=$CI_PIPELINE_ID --batch-mode --errors --settings settings.xml deploy -Dmaven.profile -DskipTests -Dmaven.compiler.proc=full
     variables:
         MAVEN_OPTS: "-Dhttps.protocols=TLSv1.2 -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN -Dorg.slf4j.simpleLogger.showDateTime=true -Djava.awt.headless=true"
     cache:
