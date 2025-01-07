@@ -4,7 +4,7 @@ stages:
 
 test:
     stage: test
-    image: eclipse-temurin:22-jdk-alpine
+    image: eclipse-temurin:23-jdk-alpine
     script:
         - ./mvnw -Drevision=$CI_PIPELINE_ID --batch-mode --errors --settings settings.xml clean package -Dmaven.profile -Dmaven.compiler.proc=full
     variables:
@@ -15,7 +15,7 @@ test:
 
 deploy:
     stage: deploy
-    image: eclipse-temurin:22-jdk-alpine
+    image: eclipse-temurin:23-jdk-alpine
     script:
         - ./mvnw -Drevision=$CI_PIPELINE_ID --batch-mode --errors --settings settings.xml deploy -Dmaven.profile -DskipTests -Dmaven.compiler.proc=full
     variables:
