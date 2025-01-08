@@ -19,7 +19,7 @@
     </parent>
 
     <properties>
-        <java.version>22</java.version>
+        <java.version>23</java.version>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <testcontainers.version>1.20.4</testcontainers.version>
