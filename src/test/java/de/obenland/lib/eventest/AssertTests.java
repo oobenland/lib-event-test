@@ -6,16 +6,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import de.obenland.lib.eventtest.Asserter;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.kafka.ConfluentKafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
 @Testcontainers
 public class AssertTests extends AbstractTests {
   @Container @ServiceConnection
-  static final KafkaContainer kafkaContainer =
-      new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.2"));
+  static final ConfluentKafkaContainer kafkaContainer =
+      new ConfluentKafkaContainer(DockerImageName.parse(KAFKA_IMAGE));
 
   @Test
   void assertEventIsProduced() {
@@ -52,7 +52,8 @@ public class AssertTests extends AbstractTests {
             ☑️\tFound 1 records
             ❌\tFound no records with topic 'test.other.topic'
             \tFound records with topics:
-            \t🚫\ttest.topic""");
+            \t🚫\ttest.topic\
+            """);
   }
 
   @Test
@@ -62,7 +63,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
             ❌\tFound no records
-            ❌\tFound no records with topic 'test.topic'""");
+            ❌\tFound no records with topic 'test.topic'\
+            """);
     ;
 
     sync(sendTestEvent());
@@ -75,7 +77,8 @@ public class AssertTests extends AbstractTests {
             ☑️\tFound 1 records
             ❌\tFound no records with topic 'test.other.topic'
             \tFound records with topics:
-            \t🚫\ttest.topic""");
+            \t🚫\ttest.topic\
+            """);
   }
 
   @Test
@@ -90,7 +93,8 @@ public class AssertTests extends AbstractTests {
             ☑️\tFound 1 records
             ❌\tFound no records with topic 'test.other.topic'
             \tFound records with topics:
-            \t🚫\ttest.topic""");
+            \t🚫\ttest.topic\
+            """);
   }
 
   @Test
@@ -105,7 +109,8 @@ public class AssertTests extends AbstractTests {
             ☑️\tFound 1 records
             ❌\tFound no records with key 'test.other.key'
             \tFound records with keys:
-            \t🚫\ttest.key""");
+            \t🚫\ttest.key\
+            """);
   }
 
   @Test
@@ -115,7 +120,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
             ❌\tFound no records
-            ❌\tFound no records with key 'test.key'""");
+            ❌\tFound no records with key 'test.key'\
+            """);
     sync(sendTestEvent());
     assertEvent().withKey("test.key").isConsumed();
 
@@ -126,7 +132,8 @@ public class AssertTests extends AbstractTests {
             ☑️\tFound 1 records
             ❌\tFound no records with key 'test.other.key'
             \tFound records with keys:
-            \t🚫\ttest.key""");
+            \t🚫\ttest.key\
+            """);
   }
 
   @Test
@@ -141,7 +148,8 @@ public class AssertTests extends AbstractTests {
             ☑️\tFound 1 records
             ❌\tFound no records with key 'test.other.key'
             \tFound records with keys:
-            \t🚫\ttest.key""");
+            \t🚫\ttest.key\
+            """);
   }
 
   @Test
@@ -156,7 +164,8 @@ public class AssertTests extends AbstractTests {
             ☑️\tFound 1 records
             ❌\tFound no records with content type 'test.other.contentType'
             \tFound records with content types:
-            \t🚫\ttest.contentType""");
+            \t🚫\ttest.contentType\
+            """);
   }
 
   @Test
@@ -166,7 +175,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
             ❌\tFound no records
-            ❌\tFound no records with content type 'test.contentType'""");
+            ❌\tFound no records with content type 'test.contentType'\
+            """);
 
     sync(sendTestEvent());
     assertEvent().withContentType("test.contentType").isConsumed();
@@ -178,7 +188,8 @@ public class AssertTests extends AbstractTests {
             ☑️\tFound 1 records
             ❌\tFound no records with content type 'test.other.contentType'
             \tFound records with content types:
-            \t🚫\ttest.contentType""");
+            \t🚫\ttest.contentType\
+            """);
   }
 
   @Test
@@ -193,7 +204,8 @@ public class AssertTests extends AbstractTests {
             ☑️\tFound 1 records
             ❌\tFound no records with content type 'test.other.contentType'
             \tFound records with content types:
-            \t🚫\ttest.contentType""");
+            \t🚫\ttest.contentType\
+            """);
   }
 
   @Test
@@ -211,7 +223,8 @@ public class AssertTests extends AbstractTests {
             \tFound records with headers:
             \t🚫\tContent-ID
             \t\tContent-Type
-            \t\ttest""");
+            \t\ttest\
+            """);
   }
 
   @Test
@@ -221,7 +234,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
             ❌\tFound no records
-            ❌\tFound no records with 'test'-header""");
+            ❌\tFound no records with 'test'-header\
+            """);
 
     sync(sendTestEvent());
     assertEvent().withHeader("test").isConsumed();
@@ -235,7 +249,8 @@ public class AssertTests extends AbstractTests {
             \tFound records with headers:
             \t🚫\tContent-ID
             \t\tContent-Type
-            \t\ttest""");
+            \t\ttest\
+            """);
   }
 
   @Test
@@ -252,7 +267,8 @@ public class AssertTests extends AbstractTests {
             \tFound records with headers:
             \t🚫\tContent-ID
             \t\tContent-Type
-            \t\ttest""");
+            \t\ttest\
+            """);
   }
 
   @Test
@@ -268,7 +284,8 @@ public class AssertTests extends AbstractTests {
             ❌\tFound no records with 'test'-header with value 'test.other.header'
             \tFound records with 'test'-headers:
             \t🚫\ttest.header
-            \t\ttest.header.2""");
+            \t\ttest.header.2\
+            """);
   }
 
   @Test
@@ -278,7 +295,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
             ❌\tFound no records
-            ❌\tFound no records with 'test'-header with value 'test.header'""");
+            ❌\tFound no records with 'test'-header with value 'test.header'\
+            """);
     sync(sendTestEvent());
     assertEvent().withHeader("test", "test.header").isConsumed();
 
@@ -290,7 +308,8 @@ public class AssertTests extends AbstractTests {
             ❌\tFound no records with 'test'-header with value 'test.other.header'
             \tFound records with 'test'-headers:
             \t🚫\ttest.header
-            \t\ttest.header.2""");
+            \t\ttest.header.2\
+            """);
   }
 
   @Test
@@ -306,7 +325,8 @@ public class AssertTests extends AbstractTests {
             ❌\tFound no records with 'test'-header with value 'test.other.header'
             \tFound records with 'test'-headers:
             \t🚫\ttest.header
-            \t\ttest.header.2""");
+            \t\ttest.header.2\
+            """);
   }
 
   @Test
@@ -323,7 +343,8 @@ public class AssertTests extends AbstractTests {
 ❌\tFound no records with 'test'-header with value '[116, 101, 115, 116, 46, 111, 116, 104, 101, 114, 46, 104, 101, 97, 100, 101, 114]'
 \tFound records with 'test'-headers:
 \t🚫\t[116, 101, 115, 116, 46, 104, 101, 97, 100, 101, 114, 46, 50]
-\t\t[116, 101, 115, 116, 46, 104, 101, 97, 100, 101, 114]""");
+\t\t[116, 101, 115, 116, 46, 104, 101, 97, 100, 101, 114]\
+""");
   }
 
   @Test
@@ -334,7 +355,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
 ❌\tFound no records
-❌\tFound no records with 'test'-header with value '[116, 101, 115, 116, 46, 104, 101, 97, 100, 101, 114]'""");
+❌\tFound no records with 'test'-header with value '[116, 101, 115, 116, 46, 104, 101, 97, 100, 101, 114]'\
+""");
 
     sync(sendTestEvent());
     assertEvent().withHeader("test", "test.header".getBytes()).isConsumed();
@@ -348,7 +370,8 @@ public class AssertTests extends AbstractTests {
 ❌\tFound no records with 'test'-header with value '[116, 101, 115, 116, 46, 111, 116, 104, 101, 114, 46, 104, 101, 97, 100, 101, 114]'
 \tFound records with 'test'-headers:
 \t🚫\t[116, 101, 115, 116, 46, 104, 101, 97, 100, 101, 114, 46, 50]
-\t\t[116, 101, 115, 116, 46, 104, 101, 97, 100, 101, 114]""");
+\t\t[116, 101, 115, 116, 46, 104, 101, 97, 100, 101, 114]\
+""");
   }
 
   @Test
@@ -365,7 +388,8 @@ public class AssertTests extends AbstractTests {
 ❌\tFound no records with 'test'-header with value '[116, 101, 115, 116, 46, 111, 116, 104, 101, 114, 46, 104, 101, 97, 100, 101, 114]'
 \tFound records with 'test'-headers:
 \t🚫\t[116, 101, 115, 116, 46, 104, 101, 97, 100, 101, 114, 46, 50]
-\t\t[116, 101, 115, 116, 46, 104, 101, 97, 100, 101, 114]""");
+\t\t[116, 101, 115, 116, 46, 104, 101, 97, 100, 101, 114]\
+""");
   }
 
   @Test
@@ -375,7 +399,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
             ❌\tFound no records
-            ❌\tFound 0 records but expected 2""");
+            ❌\tFound 0 records but expected 2\
+            """);
 
     sync(sendTestEvent());
     assertThatThrownBy(() -> assertEvent().times(2).isCommitted())
@@ -383,7 +408,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
             ☑️\tFound 1 records
-            ❌\tFound 1 records but expected 2""");
+            ❌\tFound 1 records but expected 2\
+            """);
     ;
 
     sync(sendTestEvent());
@@ -397,7 +423,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
             ❌\tFound no records
-            ❌\tFound 0 records but expected 2""");
+            ❌\tFound 0 records but expected 2\
+            """);
 
     sync(sendTestEvent());
     assertThatThrownBy(() -> assertEvent().times(2).isConsumed())
@@ -405,7 +432,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
             ☑️\tFound 1 records
-            ❌\tFound 1 records but expected 2""");
+            ❌\tFound 1 records but expected 2\
+            """);
 
     sync(sendTestEvent());
     assertEvent().times(2).isConsumed();
@@ -418,7 +446,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
             ❌\tFound no records
-            ❌\tFound 0 records but expected 2""");
+            ❌\tFound 0 records but expected 2\
+            """);
 
     sync(sendTestEvent());
     assertThatThrownBy(() -> assertEvent().times(2).isProduced())
@@ -426,7 +455,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
             ☑️\tFound 1 records
-            ❌\tFound 1 records but expected 2""");
+            ❌\tFound 1 records but expected 2\
+            """);
 
     sync(sendTestEvent());
     assertEvent().times(2).isProduced();
@@ -439,7 +469,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
             ❌\tFound no records
-            ❌\tFound 0 records but expected one""");
+            ❌\tFound 0 records but expected one\
+            """);
     sync(sendTestEvent());
     assertEvent().one().isCommitted();
 
@@ -449,7 +480,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
             ☑️\tFound 2 records
-            ❌\tFound 2 records but expected one""");
+            ❌\tFound 2 records but expected one\
+            """);
   }
 
   @Test
@@ -459,7 +491,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
             ❌\tFound no records
-            ❌\tFound 0 records but expected one""");
+            ❌\tFound 0 records but expected one\
+            """);
     sync(sendTestEvent());
     assertEvent().one().isConsumed();
 
@@ -469,7 +502,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
             ☑️\tFound 2 records
-            ❌\tFound 2 records but expected one""");
+            ❌\tFound 2 records but expected one\
+            """);
   }
 
   @Test
@@ -479,7 +513,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
             ❌\tFound no records
-            ❌\tFound 0 records but expected one""");
+            ❌\tFound 0 records but expected one\
+            """);
     sync(sendTestEvent());
     assertEvent().one().isProduced();
 
@@ -489,7 +524,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
             ☑️\tFound 2 records
-            ❌\tFound 2 records but expected one""");
+            ❌\tFound 2 records but expected one\
+            """);
   }
 
   @Test
@@ -501,7 +537,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
             ☑️\tFound 1 records
-            ❌\tFound 1 records but expected none""");
+            ❌\tFound 1 records but expected none\
+            """);
   }
 
   @Test
@@ -513,7 +550,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
             ☑️\tFound 1 records
-            ❌\tFound 1 records but expected none""");
+            ❌\tFound 1 records but expected none\
+            """);
   }
 
   @Test
@@ -525,7 +563,8 @@ public class AssertTests extends AbstractTests {
         .hasMessageContaining(
             """
             ☑️\tFound 1 records
-            ❌\tFound 1 records but expected none""");
+            ❌\tFound 1 records but expected none\
+            """);
   }
 
   @SuppressWarnings("ResultOfMethodCallIgnored")

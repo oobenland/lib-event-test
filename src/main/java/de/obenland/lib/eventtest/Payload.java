@@ -1,5 +1,6 @@
 package de.obenland.lib.eventtest;
 
+import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -8,15 +9,21 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.time.Instant;
 import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
+
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import lombok.Getter;
 import org.intellij.lang.annotations.Language;
 import org.skyscreamer.jsonassert.JSONCompareMode;
 import org.springframework.core.io.ClassPathResource;
 
 public class Payload {
+  private static final ObjectMapper objectMapper = new ObjectMapper();
+  private final List<String> ignoredPlaceholders = new ArrayList<>();
+  private final Map<String, String> placeholderValues = new HashMap<>();
   private String payload;
-  private List<String> ignoredPlaceholders;
   @Getter private JSONCompareMode compareMode = JSONCompareMode.LENIENT;
 
   private static final String MAGIC_NUMBER = "99911999";
@@ -59,8 +66,62 @@ public class Payload {
           "\n❌\tCan not find placeholder '%s' in payload:\n%s"
               .formatted(toPlaceholder(key), payload));
     }
-    payload = payload.replaceAll("\\$\\{" + key + "}", value.toString());
+    placeholderValues.put(key, value.toString());
     return this;
+  }
+
+  /**
+   * @param jsonPath path to array node<br>
+   *     E.g.: <code>/my/path/to/array</code>, <code>/my/array/2/other/array</code>
+   * @param values each value is used to create one entry in the array
+   * @param configurator configures the payload of each entry for each value
+   */
+  public <T> Payload withArray(
+      String jsonPath, Collection<T> values, BiConsumer<Payload, T> configurator) {
+    JsonPointer jsonPointer;
+    try {
+      jsonPointer = JsonPointer.compile(jsonPath);
+    } catch (Exception e) {
+      throw new AssertionError(
+          "\n❌\tGiven jsonPath '%s' is not a valid JsonPointer\n".formatted(jsonPath));
+    }
+
+    try {
+      var jsonRoot = objectMapper.readTree(payload);
+      var node = jsonRoot.at(jsonPointer);
+      if (node == null) {
+        throw new AssertionError(
+            "\n❌\tCan not find json path '%s' in payload:\n%s".formatted(jsonPath, payload));
+      }
+
+      if (!node.isArray()) {
+        throw new AssertionError(
+            "\n❌\tNode at json path '%s' is not an array:\n%s".formatted(jsonPath, payload));
+      }
+
+      var arrayNode = (ArrayNode) node;
+      var entry = arrayNode.remove(0);
+      values.stream()
+          .map(value -> {
+            final var entryPayload = new Payload(entry.toPrettyString());
+            configurator.accept(entryPayload, value);
+            return entryPayload;
+          })
+          .map(
+              entryPayload -> {
+                try {
+                  return objectMapper.readTree(entryPayload.toString());
+                } catch (Exception e) {
+                  throw new AssertionError(
+                      "\n❌\tFailed to parse payload:\n%s".formatted(payload), e);
+                }
+              })
+          .forEach(arrayNode::add);
+      payload = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonRoot);
+      return this;
+    } catch (Exception e) {
+      throw new AssertionError("\n❌\tFailed to parse payload:\n%s".formatted(payload), e);
+    }
   }
 
   public Payload lenient() {
@@ -83,17 +144,20 @@ public class Payload {
     return this;
   }
 
+  public Payload ignorePlaceholder(String ignoredPlaceholder) {
+    this.ignoredPlaceholders.add(
+        !ignoredPlaceholder.equals(MAGIC_DATE)
+                && !ignoredPlaceholder.equals(MAGIC_NUMBER)
+                && !containsPlaceholder(ignoredPlaceholder)
+            ? toPlaceholder(ignoredPlaceholder)
+            : ignoredPlaceholder);
+    return this;
+  }
+
   public Payload ignorePlaceholders(String... placeholders) {
-    this.ignoredPlaceholders =
-        Arrays.stream(placeholders)
-            .map(
-                ignoredPlaceholder ->
-                    !ignoredPlaceholder.equals(MAGIC_DATE)
-                            && !ignoredPlaceholder.equals(MAGIC_NUMBER)
-                            && !containsPlaceholder(ignoredPlaceholder)
-                        ? toPlaceholder(ignoredPlaceholder)
-                        : ignoredPlaceholder)
-            .toList();
+    for (String placeholder : placeholders) {
+      ignorePlaceholder(placeholder);
+    }
     return this;
   }
 
@@ -101,17 +165,32 @@ public class Payload {
     return "${" + ignoredPlaceholder + "}";
   }
 
+  private static String toPlaceholderRegex(String ignoredPlaceholder) {
+    return "\\$\\{" + ignoredPlaceholder + "}";
+  }
+
   public String toString() {
+    placeholderValues.forEach(
+        (key, value) -> payload = payload.replaceAll(toPlaceholderRegex(key), value));
     var keyValueMap = jsonToKeyValueMap(payload);
     var unusedPlaceholders =
         keyValueMap.entrySet().stream()
             .filter(entry -> containsPlaceholder(entry.getValue()))
             .filter(entry -> !containsIgnoredPlaceholder(entry.getValue()))
-            .map(entry -> entry.getKey() + ": " + entry.getValue())
-            .sorted()
-            .collect(Collectors.joining("\n\t🚫\t"));
+            .toList();
     if (!unusedPlaceholders.isEmpty()) {
-      throw new AssertionError("\n❌\tFound unused placeholders:\n\t🚫\t" + unusedPlaceholders);
+      var unusedPlaceholdersList = unusedPlaceholders.stream()
+          .map(entry -> entry.getKey() + ": " + entry.getValue())
+          .sorted()
+          .collect(Collectors.joining("\n\t🚫\t"));
+      var usedPlaceholdersList = placeholderValues.keySet().stream()
+          .map(placeholder -> "'" + placeholder + "'")
+          .sorted()
+          .collect(Collectors.joining("\n\t☑️\t"));
+      var usedPlaceholdersMessage = usedPlaceholdersList.isEmpty()
+          ? "having no other placeholders set"
+          : "having values for placeholders:\n\t☑️\t%s".formatted(usedPlaceholdersList);
+      throw new AssertionError("\n❌\tFound unused placeholders:\n\t🚫\t%s\nin payload:\n%s\n%s".formatted(unusedPlaceholdersList, payload, usedPlaceholdersMessage));
     }
 
     return payload;
@@ -124,12 +203,12 @@ public class Payload {
   }
 
   private boolean containsIgnoredPlaceholder(String text) {
-    return ignoredPlaceholders != null && ignoredPlaceholders.stream().anyMatch(text::contains);
+    return ignoredPlaceholders.stream().anyMatch(text::contains);
   }
 
   private Map<String, String> jsonToKeyValueMap(String json) {
     try {
-      JsonNode node = new ObjectMapper().readTree(json);
+      JsonNode node = objectMapper.readTree(json);
       return process("", node);
     } catch (JsonProcessingException e) {
       throw new AssertionError("\n❌\tInvalid JSON provided. " + e.getMessage() + ":\n" + json);

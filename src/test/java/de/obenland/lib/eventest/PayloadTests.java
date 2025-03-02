@@ -7,15 +7,16 @@ import static org.assertj.core.api.Assertions.*;
 import de.obenland.lib.TestPayloadExtensions;
 import de.obenland.lib.eventtest.Payload;
 import java.time.Instant;
+import java.util.List;
 import lombok.experimental.ExtensionMethod;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.kafka.ConfluentKafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
 @Slf4j
@@ -23,8 +24,8 @@ import org.testcontainers.utility.DockerImageName;
 @ExtensionMethod(TestPayloadExtensions.class)
 public class PayloadTests extends AbstractTests {
   @Container @ServiceConnection
-  static final KafkaContainer kafkaContainer =
-      new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.2"));
+  static final ConfluentKafkaContainer kafkaContainer =
+      new ConfluentKafkaContainer(DockerImageName.parse(KAFKA_IMAGE));
 
   @Test
   void happyPathStrict() {
@@ -102,7 +103,8 @@ public class PayloadTests extends AbstractTests {
             \t     got: 12345678
             \t ; list[1]
             \tExpected: 12345678
-            \t     got: 987654321""");
+            \t     got: 987654321\
+            """);
   }
 
   @Test
@@ -186,7 +188,8 @@ public class PayloadTests extends AbstractTests {
             \t  "custom" : "12345678"
             \t}
             \tExpected: id
-            \t     but none found""");
+            \t     but none found\
+            """);
   }
 
   @Test
@@ -239,7 +242,8 @@ public class PayloadTests extends AbstractTests {
             \t  "custom" : "12345678"
             \t}
             \tExpected: id
-            \t     but none found""");
+            \t     but none found\
+            """);
   }
 
   @Test
@@ -286,7 +290,8 @@ public class PayloadTests extends AbstractTests {
                           "list": [
                             "${entry}"
                           ]
-                        }""")
+                        }\
+                        """)
                     .toString())
         .isInstanceOf(AssertionError.class)
         .hasMessageContaining(
@@ -294,7 +299,8 @@ public class PayloadTests extends AbstractTests {
             ❌\tFound unused placeholders:
             \t🚫\tid: "${id}"
             \t🚫\tkey: "${value}"
-            \t🚫\tlist[0]: "${entry}\"""");
+            \t🚫\tlist[0]: "${entry}"\
+            """);
   }
 
   @Test
@@ -308,7 +314,8 @@ public class PayloadTests extends AbstractTests {
         .hasMessageContaining(
             """
             ❌\tFound unused placeholders:
-            \t🚫\tkey: "${value}\"""");
+            \t🚫\tkey: "${value}"\
+            """);
   }
 
   @SuppressWarnings("ResultOfMethodCallIgnored")
@@ -322,6 +329,163 @@ public class PayloadTests extends AbstractTests {
                     .toString());
   }
 
+  @Test
+  void array() {
+    assertThat(
+            Payload.fromJson(
+                    """
+                    {
+                      "id": "${id}",
+                      "myArray": [
+                        {
+                          "id": "${id}"
+                        }
+                      ]
+                    }
+                    """)
+                .withId("0")
+                .withArray("/myArray", List.of("1", "2"), Payload::withId)
+                .toString())
+        .isEqualTo(
+            """
+            {
+              "id" : "0",
+              "myArray" : [ {
+                "id" : "1"
+              }, {
+                "id" : "2"
+              } ]
+            }\
+            """);
+  }
+
+  @Test
+  void array_longPath() {
+    assertThat(
+            Payload.fromJson(
+                    """
+                    {
+                      "id": "${id}",
+                      "my": {
+                          "object": {
+                            "myArray": [
+                            {
+                              "id": "${id}",
+                              "value": "${value}"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                    """)
+                .withId("0")
+                .withArray(
+                    "/my/object/myArray",
+                    List.of("1", "2"),
+                    (payload, id) -> {
+                      payload.withId(id);
+                      payload.with("value", "myValue");
+                    })
+                .toString())
+        .isEqualTo(
+            """
+            {
+              "id" : "0",
+              "my" : {
+                "object" : {
+                  "myArray" : [ {
+                    "id" : "1",
+                    "value" : "myValue"
+                  }, {
+                    "id" : "2",
+                    "value" : "myValue"
+                  } ]
+                }
+              }
+            }\
+            """);
+  }
+
+  @Test
+  void array_longPathInsideArray() {
+    assertThat(
+            Payload.fromJson(
+                    """
+                    {
+                      "id": "${id}",
+                      "my": {
+                        "objects": [
+                          {
+                            "myArray": [
+                              {
+                                "id": "${id}",
+                                "value": "${value}"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                    """)
+                .withId("0")
+                .withArray(
+                    "/my/objects/0/myArray",
+                    List.of("1", "2"),
+                    (payload, id) -> {
+                      payload.withId(id);
+                      payload.with("value", "myValue");
+                    })
+                .toString())
+        .isEqualTo(
+            """
+            {
+              "id" : "0",
+              "my" : {
+                "objects" : [ {
+                  "myArray" : [ {
+                    "id" : "1",
+                    "value" : "myValue"
+                  }, {
+                    "id" : "2",
+                    "value" : "myValue"
+                  } ]
+                } ]
+              }
+            }\
+            """);
+  }
+
+  @Test
+  void array_isNotAnArray() {
+    assertThatThrownBy(
+            () ->
+                Payload.fromJson(
+                        """
+                        {
+                          "notAnArray": "${value}"
+                        }
+                        """)
+                    .withArray("/notAnArray", List.of("1", "2"), Payload::withId))
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining(
+            """
+            ❌	Node at json path '/notAnArray' is not an array:
+            {
+              "notAnArray": "${value}"
+            }
+            """);
+  }
+
+  @Test
+  void array_isNotAnJsonPath() {
+    assertThatThrownBy(() -> Payload.fromJson("{}").withArray("invalid.path", null, null))
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining(
+            """
+            ❌	Given jsonPath 'invalid.path' is not a valid JsonPointer
+            """);
+  }
+
   @SuppressWarnings("UnnecessaryToStringCall")
   @Test
   void invalidJson() {
@@ -333,7 +497,8 @@ public class PayloadTests extends AbstractTests {
             """
 ❌	Invalid JSON provided. Unexpected character ('a' (code 97)): was expecting double-quote to start field name
  at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 2]:
-{a""");
+{a\
+""");
   }
 
   @Test

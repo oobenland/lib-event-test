@@ -11,16 +11,16 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.kafka.ConfluentKafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
 @Testcontainers
 public class AwaitTests extends AbstractTests {
   @Container @ServiceConnection
-  static final KafkaContainer kafkaContainer =
-      new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.2"));
+  static final ConfluentKafkaContainer kafkaContainer =
+      new ConfluentKafkaContainer(DockerImageName.parse(KAFKA_IMAGE));
 
   @BeforeAll
   static void beforeAll() {

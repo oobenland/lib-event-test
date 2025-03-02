@@ -4,17 +4,17 @@ import de.obenland.lib.eventtest.Asserter;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.kafka.ConfluentKafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
 @Testcontainers
 public class RecordInterceptorTests extends AbstractTests {
 
   @Container @ServiceConnection
-  static final KafkaContainer kafkaContainer =
-      new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.2"));
+  static final ConfluentKafkaContainer kafkaContainer =
+      new ConfluentKafkaContainer(DockerImageName.parse(KAFKA_IMAGE));
 
   @Test
   void consumed() {
@@ -29,7 +29,8 @@ public class RecordInterceptorTests extends AbstractTests {
         .hasMessageContaining(
             """
             ❌\tFound no records
-            ❌\tFound no records with topic 'test.topic'""");
+            ❌\tFound no records with topic 'test.topic'\
+            """);
     Assertions.assertThatThrownBy(() -> Asserter.assertEvent().isConsumed())
         .isInstanceOf(AssertionError.class)
         .hasMessageContaining("❌\tFound no records");
@@ -50,7 +51,8 @@ public class RecordInterceptorTests extends AbstractTests {
         .hasMessageContaining(
             """
             ❌\tFound no records
-            ❌\tFound no records with topic 'test.topic'""");
+            ❌\tFound no records with topic 'test.topic'\
+            """);
     Assertions.assertThatThrownBy(() -> Asserter.assertEvent().isCommitted())
         .isInstanceOf(AssertionError.class)
         .hasMessageContaining("❌\tFound no records");
