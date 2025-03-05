@@ -18,7 +18,7 @@ public class RecordInterceptorTests extends AbstractTests {
 
   @Test
   void consumed() {
-    Asserter.sync(sendTestEvent("test.topic"));
+    Asserter.sync(sendTestEvent());
     Asserter.assertEvent().withTopic("test.topic").isConsumed();
   }
 
@@ -39,7 +39,7 @@ public class RecordInterceptorTests extends AbstractTests {
 
   @Test
   void committed() {
-    Asserter.sync(sendTestEvent("test.topic"));
+    Asserter.sync(sendTestEvent());
     Asserter.assertEvent().withTopic("test.topic").isCommitted();
   }
 
