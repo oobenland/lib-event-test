@@ -15,7 +15,7 @@ import org.springframework.kafka.support.SendResult;
 
 @SpringBootTest
 public class AbstractTests {
-  final static String KAFKA_IMAGE = "confluentinc/cp-kafka:7.8.0";
+  static final String KAFKA_IMAGE = "confluentinc/cp-kafka:7.8.0";
 
   @Autowired KafkaTemplate<String, String> kafkaTemplate;
   @Autowired RecordInterceptor recordInterceptor;
@@ -28,23 +28,11 @@ public class AbstractTests {
   @AfterEach
   void tearDown() {
     Asserter.validate();
-
   }
 
   SendResult<String, String> sendTestEvent() {
     return sendTestEvent(
         "test.topic",
-        """
-        {
-          "id": 1,
-          "value": "12345678"
-        }
-        """);
-  }
-
-  SendResult<String, String> sendTestEvent(String topic) {
-    return sendTestEvent(
-        topic,
         """
         {
           "id": 1,

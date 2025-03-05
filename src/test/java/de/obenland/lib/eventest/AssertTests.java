@@ -1,6 +1,7 @@
 package de.obenland.lib.eventest;
 
 import static de.obenland.lib.eventtest.Asserter.*;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import de.obenland.lib.eventtest.Asserter;
@@ -65,7 +66,6 @@ public class AssertTests extends AbstractTests {
             ❌\tFound no records
             ❌\tFound no records with topic 'test.topic'\
             """);
-    ;
 
     sync(sendTestEvent());
     assertEvent().withTopic("test.topic").isConsumed();
@@ -111,6 +111,9 @@ public class AssertTests extends AbstractTests {
             \tFound records with keys:
             \t🚫\ttest.key\
             """);
+
+    assertThatCode(() -> assertEvent().withKey("test.key").isCommitted())
+        .doesNotThrowAnyException();
   }
 
   @Test
@@ -134,6 +137,8 @@ public class AssertTests extends AbstractTests {
             \tFound records with keys:
             \t🚫\ttest.key\
             """);
+
+    assertThatCode(() -> assertEvent().withKey("test.key").isConsumed()).doesNotThrowAnyException();
   }
 
   @Test
@@ -150,6 +155,8 @@ public class AssertTests extends AbstractTests {
             \tFound records with keys:
             \t🚫\ttest.key\
             """);
+
+    assertThatCode(() -> assertEvent().withKey("test.key").isProduced()).doesNotThrowAnyException();
   }
 
   @Test
@@ -410,7 +417,6 @@ public class AssertTests extends AbstractTests {
             ☑️\tFound 1 records
             ❌\tFound 1 records but expected 2\
             """);
-    ;
 
     sync(sendTestEvent());
     assertEvent().times(2).isCommitted();

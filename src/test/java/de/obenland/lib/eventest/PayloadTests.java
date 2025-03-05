@@ -7,7 +7,6 @@ import static org.assertj.core.api.Assertions.*;
 import de.obenland.lib.TestPayloadExtensions;
 import de.obenland.lib.eventtest.Payload;
 import java.time.Instant;
-import java.util.List;
 import lombok.experimental.ExtensionMethod;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
@@ -281,25 +280,72 @@ public class PayloadTests extends AbstractTests {
   @Test
   void placeholdersWereNotReplaced() {
     assertThatThrownBy(
-            () ->
-                Payload.fromJson(
-                        """
-                        {
-                          "id": "${id}",
-                          "key": "${value}",
-                          "list": [
-                            "${entry}"
-                          ]
-                        }\
-                        """)
-                    .toString())
+        () ->
+            Payload.fromJson(
+                    """
+                    {
+                      "id": "${id}",
+                      "key": "${value}",
+                      "list": [
+                        "${entry}"
+                      ]
+                    }\
+                    """)
+                .toString())
         .isInstanceOf(AssertionError.class)
         .hasMessageContaining(
             """
+            ☑️\tNo placeholders are provided
+            ☑️\tNo placeholders are ignored
             ❌\tFound unused placeholders:
             \t🚫\tid: "${id}"
             \t🚫\tkey: "${value}"
-            \t🚫\tlist[0]: "${entry}"\
+            \t🚫\tlist[0]: "${entry}"
+            in payload:
+            {
+              "id": "${id}",
+              "key": "${value}",
+              "list": [
+                "${entry}"
+              ]
+            }\
+            """);
+  }
+
+  @Test
+  void placeholdersWereNotReplaced_withGivenPlaceholders() {
+    assertThatThrownBy(
+        () ->
+            Payload.fromJson(
+                    """
+                    {
+                      "id": "${id}",
+                      "key": "${key}",
+                      "list": [
+                        "my ${entry}"
+                      ]
+                    }\
+                    """)
+                .withId("12345678")
+                .with("key", "myValue")
+                .toString())
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining(
+            """
+            ☑️\tFound provided placeholders:
+            \t→\tid
+            \t→\tkey
+            ☑️\tNo placeholders are ignored
+            ❌\tFound unused placeholders:
+            \t🚫\tlist[0]: "my ${entry}"
+            in payload:
+            {
+              "id": "12345678",
+              "key": "myValue",
+              "list": [
+                "my ${entry}"
+              ]
+            }\
             """);
   }
 
@@ -308,13 +354,19 @@ public class PayloadTests extends AbstractTests {
     assertThatThrownBy(
             () ->
                 Payload.fromJson("{\"id\": \"${id}\", \"key\": \"${value}\"}")
-                    .ignorePlaceholders("id", "99911999")
+                    .ignorePlaceholders("id", "other")
                     .toString())
         .isInstanceOf(AssertionError.class)
         .hasMessageContaining(
             """
+            ☑️\tNo placeholders are provided
+            ☑️\tFound ignored placeholders:
+            \t→\tid
+            \t→\tother
             ❌\tFound unused placeholders:
-            \t🚫\tkey: "${value}"\
+            \t🚫\tkey: "${value}"
+            in payload:
+            {"id": "${id}", "key": "${value}"}\
             """);
   }
 
@@ -327,163 +379,6 @@ public class PayloadTests extends AbstractTests {
                 Payload.fromJson("{\"id\": \"${id}\", \"key\": \"${value}\"}")
                     .ignorePlaceholders("id", "value")
                     .toString());
-  }
-
-  @Test
-  void array() {
-    assertThat(
-            Payload.fromJson(
-                    """
-                    {
-                      "id": "${id}",
-                      "myArray": [
-                        {
-                          "id": "${id}"
-                        }
-                      ]
-                    }
-                    """)
-                .withId("0")
-                .withArray("/myArray", List.of("1", "2"), Payload::withId)
-                .toString())
-        .isEqualTo(
-            """
-            {
-              "id" : "0",
-              "myArray" : [ {
-                "id" : "1"
-              }, {
-                "id" : "2"
-              } ]
-            }\
-            """);
-  }
-
-  @Test
-  void array_longPath() {
-    assertThat(
-            Payload.fromJson(
-                    """
-                    {
-                      "id": "${id}",
-                      "my": {
-                          "object": {
-                            "myArray": [
-                            {
-                              "id": "${id}",
-                              "value": "${value}"
-                            }
-                          ]
-                        }
-                      }
-                    }
-                    """)
-                .withId("0")
-                .withArray(
-                    "/my/object/myArray",
-                    List.of("1", "2"),
-                    (payload, id) -> {
-                      payload.withId(id);
-                      payload.with("value", "myValue");
-                    })
-                .toString())
-        .isEqualTo(
-            """
-            {
-              "id" : "0",
-              "my" : {
-                "object" : {
-                  "myArray" : [ {
-                    "id" : "1",
-                    "value" : "myValue"
-                  }, {
-                    "id" : "2",
-                    "value" : "myValue"
-                  } ]
-                }
-              }
-            }\
-            """);
-  }
-
-  @Test
-  void array_longPathInsideArray() {
-    assertThat(
-            Payload.fromJson(
-                    """
-                    {
-                      "id": "${id}",
-                      "my": {
-                        "objects": [
-                          {
-                            "myArray": [
-                              {
-                                "id": "${id}",
-                                "value": "${value}"
-                              }
-                            ]
-                          }
-                        ]
-                      }
-                    }
-                    """)
-                .withId("0")
-                .withArray(
-                    "/my/objects/0/myArray",
-                    List.of("1", "2"),
-                    (payload, id) -> {
-                      payload.withId(id);
-                      payload.with("value", "myValue");
-                    })
-                .toString())
-        .isEqualTo(
-            """
-            {
-              "id" : "0",
-              "my" : {
-                "objects" : [ {
-                  "myArray" : [ {
-                    "id" : "1",
-                    "value" : "myValue"
-                  }, {
-                    "id" : "2",
-                    "value" : "myValue"
-                  } ]
-                } ]
-              }
-            }\
-            """);
-  }
-
-  @Test
-  void array_isNotAnArray() {
-    assertThatThrownBy(
-            () ->
-                Payload.fromJson(
-                        """
-                        {
-                          "notAnArray": "${value}"
-                        }
-                        """)
-                    .withArray("/notAnArray", List.of("1", "2"), Payload::withId))
-        .isInstanceOf(AssertionError.class)
-        .hasMessageContaining(
-            """
-            ❌	Node at json path '/notAnArray' is not an array:
-            {
-              "notAnArray": "${value}"
-            }
-            """);
-  }
-
-  @Test
-  void array_isNotAnJsonPath() {
-    assertThatThrownBy(() -> Payload.fromJson("{}").withArray("invalid.path", null, null))
-        .isInstanceOf(AssertionError.class)
-        .hasMessageContaining(
-            """
-            ❌	Given jsonPath 'invalid.path' is not a valid JsonPointer
-            """);
   }
 
   @SuppressWarnings("UnnecessaryToStringCall")

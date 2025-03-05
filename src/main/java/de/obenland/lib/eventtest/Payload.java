@@ -10,7 +10,6 @@ import java.nio.charset.Charset;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -25,9 +24,6 @@ public class Payload {
   private final Map<String, String> placeholderValues = new HashMap<>();
   private String payload;
   @Getter private JSONCompareMode compareMode = JSONCompareMode.LENIENT;
-
-  private static final String MAGIC_NUMBER = "99911999";
-  private static final String MAGIC_DATE = "2020-09-09T09:09:09.090Z";
 
   public Payload(String payload) {
     this.payload = payload;
@@ -145,12 +141,7 @@ public class Payload {
   }
 
   public Payload ignorePlaceholder(String ignoredPlaceholder) {
-    this.ignoredPlaceholders.add(
-        !ignoredPlaceholder.equals(MAGIC_DATE)
-                && !ignoredPlaceholder.equals(MAGIC_NUMBER)
-                && !containsPlaceholder(ignoredPlaceholder)
-            ? toPlaceholder(ignoredPlaceholder)
-            : ignoredPlaceholder);
+    this.ignoredPlaceholders.add(toPlaceholder(ignoredPlaceholder));
     return this;
   }
 
@@ -161,12 +152,16 @@ public class Payload {
     return this;
   }
 
-  private static String toPlaceholder(String ignoredPlaceholder) {
-    return "${" + ignoredPlaceholder + "}";
+  private static String toPlaceholder(String placeholder) {
+    return "${" + placeholder + "}";
   }
 
-  private static String toPlaceholderRegex(String ignoredPlaceholder) {
-    return "\\$\\{" + ignoredPlaceholder + "}";
+  private static String toPlaceholderRegex(String placeholder) {
+    return "\\$\\{" + placeholder + "}";
+  }
+
+  private static String fromPlaceholder(String placeholder) {
+    return placeholder.substring(2, placeholder.length() - 1);
   }
 
   public String toString() {
@@ -183,23 +178,35 @@ public class Payload {
           .map(entry -> entry.getKey() + ": " + entry.getValue())
           .sorted()
           .collect(Collectors.joining("\n\t🚫\t"));
-      var usedPlaceholdersList = placeholderValues.keySet().stream()
-          .map(placeholder -> "'" + placeholder + "'")
+
+      var ignoredPlaceholdersList = ignoredPlaceholders.stream()
+          .map(Payload::fromPlaceholder)
           .sorted()
-          .collect(Collectors.joining("\n\t☑️\t"));
-      var usedPlaceholdersMessage = usedPlaceholdersList.isEmpty()
-          ? "having no other placeholders set"
-          : "having values for placeholders:\n\t☑️\t%s".formatted(usedPlaceholdersList);
-      throw new AssertionError("\n❌\tFound unused placeholders:\n\t🚫\t%s\nin payload:\n%s\n%s".formatted(unusedPlaceholdersList, payload, usedPlaceholdersMessage));
+          .collect(Collectors.joining("\n\t→\t"));
+      var ignoredPlaceholdersMessage = ignoredPlaceholdersList.isEmpty()
+          ? "☑️\tNo placeholders are ignored"
+          : "☑️\tFound ignored placeholders:\n\t→\t%s".formatted(ignoredPlaceholdersList);
+
+      var usedPlaceholdersList = placeholderValues.keySet().stream()
+          .sorted()
+          .collect(Collectors.joining("\n\t→\t"));
+      var providedPlaceholdersMessage = usedPlaceholdersList.isEmpty()
+          ? "☑️\tNo placeholders are provided"
+          : "☑️\tFound provided placeholders:\n\t→\t%s".formatted(usedPlaceholdersList);
+
+      throw new AssertionError("\n%s\n%s\n❌\tFound unused placeholders:\n\t🚫\t%s\nin payload:\n%s".formatted(providedPlaceholdersMessage, ignoredPlaceholdersMessage, unusedPlaceholdersList, payload));
     }
 
     return payload;
   }
 
   private static boolean containsPlaceholder(String text) {
-    return text.contains("${") && text.contains("}")
-        || text.contains(MAGIC_NUMBER)
-        || text.contains(MAGIC_DATE);
+    var startIndex = text.indexOf("${");
+    if (startIndex == -1) {
+      return false;
+    }
+    var endIndex = text.indexOf("}", startIndex + 2);
+    return endIndex != -1;
   }
 
   private boolean containsIgnoredPlaceholder(String text) {
