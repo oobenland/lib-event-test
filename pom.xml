@@ -4,12 +4,34 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <name>libEventTest</name>
+    <description>Testing framework to assert events using Kafka and Spring-Boot</description>
+    <url>https://github.com/oobenland/libEventTest</url>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Oliver Obenland</name>
+            <email>oliver.obenland@gmx.de</email>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/oobenland/libEventTest.git</connection>
+        <developerConnection>scm:git:https://github.com/oobenland/libEventTest.git</developerConnection>
+        <url>https://github.com/oobenland/libEventTest</url>
+    </scm>
+
     <groupId>de.obenland.lib</groupId>
     <artifactId>event-test</artifactId>
-    <version>0.1.${revision}</version>
+    <version>0.1.${revision}-SNAPSHOT</version>
     <packaging>jar</packaging>
-
-    <name>lib-event-test</name>
 
     <parent>
         <groupId>org.springframework.boot</groupId>
@@ -99,5 +121,4 @@
             <url>https://gitlab.oben.link/api/v4/projects/26/packages/maven</url>
         </snapshotRepository>
     </distributionManagement>
-
 </project>

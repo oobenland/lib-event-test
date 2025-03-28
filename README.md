@@ -1,6 +1,6 @@
 # lib-event-test
 
-Test framework to assert events using Kafka and Spring-Boot
+Testing framework to assert events using Kafka and Spring-Boot
 
 # Install
 
@@ -22,9 +22,21 @@ Add to application.properties:
     spring.kafka.producer.properties.interceptor.classes=de.obenland.lib.eventtest.RecordInterceptor
 
 # Usage
+```java
+    // Send you event to Kafka
+    kafkaTemplate.send(record);
+
+
+    // 
+    awaitEvent()
+      .withTopic("test.topic")
+      .withKey("test.key")
+      .withContentType("test.contentType")
+      .isProduced();
 
     assertEvent()
       .withTopic("test.topic")
       .withKey("test.key")
       .withContentType("test.contentType")
       .isProduced();
+```
