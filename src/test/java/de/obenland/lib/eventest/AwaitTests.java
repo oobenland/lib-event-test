@@ -2,6 +2,7 @@ package de.obenland.lib.eventest;
 
 import static de.obenland.lib.eventtest.Asserter.awaitEvent;
 import static de.obenland.lib.eventtest.Asserter.sync;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.concurrent.TimeUnit;
@@ -17,7 +18,7 @@ import org.testcontainers.kafka.ConfluentKafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
 @Testcontainers
-public class AwaitTests extends AbstractTests {
+class AwaitTests extends AbstractTests {
   @Container @ServiceConnection
   static final ConfluentKafkaContainer kafkaContainer =
       new ConfluentKafkaContainer(DockerImageName.parse(KAFKA_IMAGE));
@@ -37,7 +38,10 @@ public class AwaitTests extends AbstractTests {
     assertThatThrownBy(() -> awaitEvent().isProduced())
         .isInstanceOf(ConditionTimeoutException.class);
     sendTestEvent();
-    awaitEvent().isProduced();
+    var events = awaitEvent().isProduced();
+    assertThat(events).hasSize(1)
+        .first()
+        .satisfies(this::assertIsTestEvent);
   }
 
   @Test
@@ -45,7 +49,10 @@ public class AwaitTests extends AbstractTests {
     assertThatThrownBy(() -> awaitEvent().isCommitted())
         .isInstanceOf(ConditionTimeoutException.class);
     sendTestEvent();
-    awaitEvent().isCommitted();
+    var events = awaitEvent().isCommitted();
+    assertThat(events).hasSize(1)
+        .first()
+        .satisfies(this::assertIsTestEvent);
   }
 
   @Test
@@ -53,7 +60,10 @@ public class AwaitTests extends AbstractTests {
     assertThatThrownBy(() -> awaitEvent().isConsumed())
         .isInstanceOf(ConditionTimeoutException.class);
     sendTestEvent();
-    awaitEvent().isConsumed();
+    var events = awaitEvent().isConsumed();
+    assertThat(events).hasSize(1)
+        .first()
+        .satisfies(this::assertIsTestEvent);
   }
 
   @Test

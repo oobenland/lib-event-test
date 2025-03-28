@@ -1,8 +1,7 @@
 package de.obenland.lib.eventest;
 
 import static de.obenland.lib.eventtest.Asserter.*;
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 
 import de.obenland.lib.eventtest.Asserter;
 import org.junit.jupiter.api.Test;
@@ -13,7 +12,7 @@ import org.testcontainers.kafka.ConfluentKafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
 @Testcontainers
-public class AssertTests extends AbstractTests {
+class AssertTests extends AbstractTests {
   @Container @ServiceConnection
   static final ConfluentKafkaContainer kafkaContainer =
       new ConfluentKafkaContainer(DockerImageName.parse(KAFKA_IMAGE));
@@ -21,15 +20,26 @@ public class AssertTests extends AbstractTests {
   @Test
   void assertEventIsProduced() {
     sync(sendTestEvent());
-    assertEvent().isProduced();
+
+    var events = assertEvent().isProduced();
+
+    assertThat(events).hasSize(1)
+        .first()
+        .satisfies(this::assertIsTestEvent);
   }
 
   @Test
-  void assertEventIsCommitted() throws InterruptedException {
-    sendTestEvent();
-    assertThatThrownBy(() -> assertEvent().isCommitted()).isInstanceOf(AssertionError.class);
-    Thread.sleep(100);
-    assertEvent().isCommitted();
+  void assertEventIsCommitted() {
+    var sendResult= sendTestEvent();
+    var assertion = assertEvent();
+
+    assertThatThrownBy(assertion::isCommitted).isInstanceOf(AssertionError.class);
+
+    sync(sendResult);
+    var events = assertEvent().isCommitted();
+    assertThat(events).hasSize(1)
+        .first()
+        .satisfies(this::assertIsTestEvent);
   }
 
   @Test
@@ -38,7 +48,10 @@ public class AssertTests extends AbstractTests {
         .isInstanceOf(AssertionError.class)
         .hasMessageContaining("❌\tFound no records");
     sync(sendTestEvent());
-    assertEvent().isConsumed();
+    var events = assertEvent().isConsumed();
+    assertThat(events).hasSize(1)
+        .first()
+        .satisfies(this::assertIsTestEvent);
   }
 
   @Test

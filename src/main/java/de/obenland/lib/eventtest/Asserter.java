@@ -8,6 +8,7 @@ import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.PathNotFoundException;
 import java.nio.charset.Charset;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -27,7 +28,7 @@ public class Asserter {
   private static final List<Asserter> unfinishedAsserters = new ArrayList<>();
   private final List<Assertion> assertions = new ArrayList<>();
   private final boolean awaitAssertion;
-  private Consumer<Supplier<List<ConsumerRecord<String, String>>>> assertionFunction;
+  private Function<Supplier<List<ConsumerRecord<String, String>>>, List<ConsumerRecord<String, String>>> assertionFunction;
 
   private Asserter(boolean awaitAssertion) {
     this.awaitAssertion = awaitAssertion;
@@ -293,22 +294,22 @@ public class Asserter {
                 for (var record : records) {
                   buffer
                       .append("\n\t🚫\n\t")
-                      .append(prettyPrintJson(record.value()).replaceAll("\n", "\n\t"))
+                      .append(prettyPrintJson(record.value()).replace("\n", "\n\t"))
                       .append("\n");
                   try {
                     var result =
                         JSONCompare.compareJSON(
                             payload.toString(), record.value(), payload.getCompareMode());
-                    buffer.append("\t").append(result.getMessage().trim().replaceAll("\n", "\n\t"));
+                    buffer.append("\t").append(result.getMessage().trim().replace("\n", "\n\t"));
                   } catch (JSONException e) {
-                    buffer.append("\t").append(e.getMessage().trim().replaceAll("\n", "\n\t"));
+                    buffer.append("\t").append(e.getMessage().trim().replace("\n", "\n\t"));
                   }
                 }
               }
 
               return "❌\tFound no records with payload:\n\t%s%s"
                   .formatted(
-                      prettyPrintJson(payload.toString()).replaceAll("\n", "\n\t"),
+                      prettyPrintJson(payload.toString()).replace("\n", "\n\t"),
                       buffer.toString());
             }));
     return this;
@@ -379,7 +380,7 @@ public class Asserter {
   public Asserter withHeader(String header, byte[] value) {
     assertions.add(
         new Assertion(
-            "withHeader(\"" + header + "\", \"" + value + "\")",
+            "withHeader(\"" + header + "\", \"" + Arrays.toString(value) + "\")",
             record ->
                 StreamSupport.stream(record.headers().headers(header).spliterator(), false)
                     .anyMatch(h -> Arrays.equals(h.value(), value)),
@@ -438,7 +439,7 @@ public class Asserter {
     assertionFunction =
         recordSupplier -> {
           sleep(200);
-          oldAssertionFunction.accept(recordSupplier);
+          return oldAssertionFunction.apply(recordSupplier);
         };
     assertions.add(
         new Assertion(
@@ -450,19 +451,19 @@ public class Asserter {
     return this;
   }
 
-  public void isProduced() {
-    assertionFunction.accept(RecordInterceptor::getProducedRecords);
+  public List<ConsumerRecord<String, String>> isProduced() {
+    return assertionFunction.apply(RecordInterceptor::getProducedRecords);
   }
 
-  public void isCommitted() {
-    assertionFunction.accept(RecordInterceptor::getCommittedRecords);
+  public List<ConsumerRecord<String, String>> isCommitted() {
+    return assertionFunction.apply(RecordInterceptor::getCommittedRecords);
   }
 
-  public void isConsumed() {
-    assertionFunction.accept(RecordInterceptor::getConsumedRecords);
+  public List<ConsumerRecord<String, String>> isConsumed() {
+    return assertionFunction.apply(RecordInterceptor::getConsumedRecords);
   }
 
-  private void doAssert(Supplier<List<ConsumerRecord<String, String>>> recordSupplier) {
+  private List<ConsumerRecord<String, String>> doAssert(Supplier<List<ConsumerRecord<String, String>>> recordSupplier) {
     unfinishedAsserters.remove(this);
 
     var records = recordSupplier.get();
@@ -473,13 +474,16 @@ public class Asserter {
 
     try {
       assertions.getLast().assertionConsumer.accept(filteredRecords);
+      return filteredRecords;
     } catch (AssertionError e) {
       throw new AssertionError(toAssertionErrorDescription(records));
     }
   }
 
-  private void doAwait(Supplier<List<ConsumerRecord<String, String>>> recordSupplier) {
-    Awaitility.await().untilAsserted(() -> doAssert(recordSupplier));
+  private List<ConsumerRecord<String, String>> doAwait(Supplier<List<ConsumerRecord<String, String>>> recordSupplier) {
+    var reference = new AtomicReference<List<ConsumerRecord<String, String>>>();
+    Awaitility.await().untilAsserted(() -> reference.set(doAssert(recordSupplier)));
+    return reference.get();
   }
 
   private String toAssertionErrorDescription(List<ConsumerRecord<String, String>> records) {
@@ -535,7 +539,7 @@ public class Asserter {
       if (codeRepresentation == null) {
         continue;
       }
-      buffer.append("\t\t.").append(codeRepresentation.replaceAll("\n", "\t\t\n")).append("\n");
+      buffer.append("\t\t.").append(codeRepresentation.replace("\n", "\t\t\n")).append("\n");
     }
     return buffer.toString().trim();
   }

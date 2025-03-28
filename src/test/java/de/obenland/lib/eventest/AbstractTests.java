@@ -3,6 +3,8 @@ package de.obenland.lib.eventest;
 import de.obenland.lib.eventtest.Asserter;
 import de.obenland.lib.eventtest.RecordInterceptor;
 import java.util.concurrent.ExecutionException;
+
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.intellij.lang.annotations.Language;
@@ -13,8 +15,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 @SpringBootTest
-public class AbstractTests {
+abstract class AbstractTests {
   static final String KAFKA_IMAGE = "confluentinc/cp-kafka:7.8.0";
 
   @Autowired KafkaTemplate<String, String> kafkaTemplate;
@@ -34,6 +38,16 @@ public class AbstractTests {
     return sendTestEvent(
         "test.topic",
         """
+        {
+          "id": 1,
+          "value": "12345678"
+        }
+        """);
+  }
+
+  void assertIsTestEvent(ConsumerRecord<String, String> revent) {
+    assertThat(revent.topic()).isEqualTo("test.topic");
+    assertThat(revent.value()).isEqualTo("""
         {
           "id": 1,
           "value": "12345678"
