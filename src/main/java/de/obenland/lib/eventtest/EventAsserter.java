@@ -23,17 +23,17 @@ import org.skyscreamer.jsonassert.JSONCompare;
 import org.springframework.kafka.support.SendResult;
 
 @Slf4j
-public class Asserter {
+public class EventAsserter {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-  private static final List<Asserter> unfinishedAsserters = new ArrayList<>();
+  private static final List<EventAsserter> UNFINISHED_EVENT_ASSERTERS = new ArrayList<>();
   private final List<Assertion> assertions = new ArrayList<>();
   private final boolean awaitAssertion;
   private Function<Supplier<List<ConsumerRecord<String, String>>>, List<ConsumerRecord<String, String>>> assertionFunction;
 
-  private Asserter(boolean awaitAssertion) {
+  private EventAsserter(boolean awaitAssertion) {
     this.awaitAssertion = awaitAssertion;
     assertionFunction = awaitAssertion ? this::doAwait : this::doAssert;
-    unfinishedAsserters.add(this);
+    UNFINISHED_EVENT_ASSERTERS.add(this);
   }
 
   /**
@@ -54,34 +54,34 @@ public class Asserter {
       Function<List<ConsumerRecord<String, String>>, String> failDescriptionFunction) {}
 
   @CheckReturnValue
-  public static Asserter assertEvent() {
-    return new Asserter(false).addRecordCountAssertion();
+  public static EventAsserter assertEvent() {
+    return new EventAsserter(false).addRecordCountAssertion();
   }
 
   @CheckReturnValue
-  public static Asserter awaitEvent() {
-    return new Asserter(true).addRecordCountAssertion();
+  public static EventAsserter awaitEvent() {
+    return new EventAsserter(true).addRecordCountAssertion();
   }
 
   public static void sync(SendResult<String, String> sendResult) {
-    Asserter.awaitEvent().withSendResult(sendResult).isCommitted();
+    EventAsserter.awaitEvent().withSendResult(sendResult).isCommitted();
   }
 
   public static void validate() {
-    if (unfinishedAsserters.isEmpty()) {
+    if (UNFINISHED_EVENT_ASSERTERS.isEmpty()) {
       return;
     }
 
     var buffer = new StringBuilder("Found unfinished assertions:\n");
-    for (var assertion : unfinishedAsserters) {
+    for (var assertion : UNFINISHED_EVENT_ASSERTERS) {
       buffer.append(assertion.toString()).append("\n");
     }
-    unfinishedAsserters.clear();
+    UNFINISHED_EVENT_ASSERTERS.clear();
     throw new AssertionError(buffer.toString());
   }
 
   @CheckReturnValue
-  public Asserter withSendResult(SendResult<String, String> sendResult) {
+  public EventAsserter withSendResult(SendResult<String, String> sendResult) {
     var topic = sendResult.getRecordMetadata().topic();
     var partition = sendResult.getRecordMetadata().partition();
     var offset = sendResult.getRecordMetadata().offset();
@@ -117,7 +117,7 @@ public class Asserter {
   }
 
   @CheckReturnValue
-  public Asserter withTopic(String topic) {
+  public EventAsserter withTopic(String topic) {
     assertions.add(
         new Assertion(
             "withTopic(\"" + topic + "\")",
@@ -143,7 +143,7 @@ public class Asserter {
   }
 
   @CheckReturnValue
-  public Asserter withKey(String key) {
+  public EventAsserter withKey(String key) {
     assertions.add(
         new Assertion(
             "withKey(\"" + key + "\")",
@@ -169,7 +169,7 @@ public class Asserter {
   }
 
   @CheckReturnValue
-  public Asserter withContentType(String contentType) {
+  public EventAsserter withContentType(String contentType) {
     assertions.add(
         new Assertion(
             "withContentType(\"" + contentType + "\")",
@@ -198,7 +198,7 @@ public class Asserter {
   }
 
   @CheckReturnValue
-  public Asserter withContentId(String contentId) {
+  public EventAsserter withContentId(String contentId) {
     assertions.add(
         new Assertion(
             "withContentId(\"" + contentId + "\")",
@@ -226,7 +226,7 @@ public class Asserter {
   }
 
   @CheckReturnValue
-  public Asserter withMatchingJsonPath(String jsonPathString) {
+  public EventAsserter withMatchingJsonPath(String jsonPathString) {
     var jsonPath = JsonPath.compile(jsonPathString);
     Predicate<String> jsonPathFilterPredicate =
         json -> {
@@ -270,14 +270,14 @@ public class Asserter {
   }
 
   @CheckReturnValue
-  public Asserter withPayload(Payload payload) {
+  public EventAsserter withPayload(EventPayload eventPayload) {
     assertions.add(
         new Assertion(
-            "withPayload(\"" + payload + "\")",
+            "withPayload(\"" + eventPayload + "\")",
             record -> {
               try {
                 return JSONCompare.compareJSON(
-                        payload.toString(), record.value(), payload.getCompareMode())
+                        eventPayload.toString(), record.value(), eventPayload.getCompareMode())
                     .passed();
               } catch (JSONException e) {
                 return false;
@@ -285,8 +285,8 @@ public class Asserter {
             },
             records -> assertThat(records).isNotEmpty(),
             records ->
-                "☑️\tFound %d records with payload:\n%s"
-                    .formatted(records.size(), payload.toString().trim()),
+                "☑️\tFound %d records with eventPayload:\n%s"
+                    .formatted(records.size(), eventPayload.toString().trim()),
             records -> {
               var buffer = new StringBuilder();
               if (records != null && !records.isEmpty()) {
@@ -299,7 +299,7 @@ public class Asserter {
                   try {
                     var result =
                         JSONCompare.compareJSON(
-                            payload.toString(), record.value(), payload.getCompareMode());
+                            eventPayload.toString(), record.value(), eventPayload.getCompareMode());
                     buffer.append("\t").append(result.getMessage().trim().replace("\n", "\n\t"));
                   } catch (JSONException e) {
                     buffer.append("\t").append(e.getMessage().trim().replace("\n", "\n\t"));
@@ -307,16 +307,16 @@ public class Asserter {
                 }
               }
 
-              return "❌\tFound no records with payload:\n\t%s%s"
+              return "❌\tFound no records with eventPayload:\n\t%s%s"
                   .formatted(
-                      prettyPrintJson(payload.toString()).replace("\n", "\n\t"),
+                      prettyPrintJson(eventPayload.toString()).replace("\n", "\n\t"),
                       buffer.toString());
             }));
     return this;
   }
 
   @CheckReturnValue
-  public Asserter withHeader(String header) {
+  public EventAsserter withHeader(String header) {
     assertions.add(
         new Assertion(
             "withHeader(\"" + header + "\")",
@@ -343,7 +343,7 @@ public class Asserter {
   }
 
   @CheckReturnValue
-  public Asserter withHeader(String header, String value) {
+  public EventAsserter withHeader(String header, String value) {
     final var valueAsBytes = value.getBytes();
     assertions.add(
         new Assertion(
@@ -377,7 +377,7 @@ public class Asserter {
   }
 
   @CheckReturnValue
-  public Asserter withHeader(String header, byte[] value) {
+  public EventAsserter withHeader(String header, byte[] value) {
     assertions.add(
         new Assertion(
             "withHeader(\"" + header + "\", \"" + Arrays.toString(value) + "\")",
@@ -410,7 +410,7 @@ public class Asserter {
   }
 
   @CheckReturnValue
-  public Asserter times(int times) {
+  public EventAsserter times(int times) {
     assertions.add(
         new Assertion(
             "times(" + times + ")",
@@ -422,7 +422,7 @@ public class Asserter {
   }
 
   @CheckReturnValue
-  public Asserter one() {
+  public EventAsserter one() {
     assertions.add(
         new Assertion(
             "one()",
@@ -434,7 +434,7 @@ public class Asserter {
   }
 
   @CheckReturnValue
-  public Asserter none() {
+  public EventAsserter none() {
     var oldAssertionFunction = assertionFunction;
     assertionFunction =
         recordSupplier -> {
@@ -464,7 +464,7 @@ public class Asserter {
   }
 
   private List<ConsumerRecord<String, String>> doAssert(Supplier<List<ConsumerRecord<String, String>>> recordSupplier) {
-    unfinishedAsserters.remove(this);
+    UNFINISHED_EVENT_ASSERTERS.remove(this);
 
     var records = recordSupplier.get();
     var filteredRecords = new ArrayList<>(records);
@@ -501,7 +501,7 @@ public class Asserter {
     return buffer.toString();
   }
 
-  private Asserter addRecordCountAssertion() {
+  private EventAsserter addRecordCountAssertion() {
     assertions.addFirst(
         new Assertion(
             null,

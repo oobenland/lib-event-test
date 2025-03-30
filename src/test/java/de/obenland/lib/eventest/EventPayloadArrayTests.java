@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import de.obenland.lib.TestPayloadExtensions;
-import de.obenland.lib.eventtest.Payload;
+import de.obenland.lib.eventtest.EventPayload;
 import java.util.List;
 import lombok.experimental.ExtensionMethod;
 import lombok.extern.slf4j.Slf4j;
@@ -12,12 +12,12 @@ import org.junit.jupiter.api.Test;
 
 @Slf4j
 @ExtensionMethod(TestPayloadExtensions.class)
-public class PayloadArrayTests {
+public class EventPayloadArrayTests {
 
   @Test
   void happyPath() {
     assertThat(
-            Payload.fromJson(
+            EventPayload.fromJson(
                     """
                     {
                       "id": "${id}",
@@ -29,9 +29,9 @@ public class PayloadArrayTests {
                     }
                     """)
                 .withId("0")
-                .withArray("/myArray", List.of("1", "2"), Payload::withId)
+                .withArray("/myArray", List.of("1", "2"), EventPayload::withId)
                 .toString())
-        .isEqualTo(
+        .hasToString(
             """
             {
               "id" : "0",
@@ -47,7 +47,7 @@ public class PayloadArrayTests {
   @Test
   void longPath() {
     assertThat(
-            Payload.fromJson(
+            EventPayload.fromJson(
                     """
                     {
                       "id": "${id}",
@@ -68,11 +68,10 @@ public class PayloadArrayTests {
                     "/my/object/myArray",
                     List.of("1", "2"),
                     (payload, id) -> {
-                      payload.withId(id);
-                      payload.with("value", "myValue");
+                      payload.withId(id).with("value", "myValue");
                     })
                 .toString())
-        .isEqualTo(
+        .hasToString(
             """
             {
               "id" : "0",
@@ -92,9 +91,35 @@ public class PayloadArrayTests {
   }
 
   @Test
+  void emptyArray() {
+    assertThat(
+            EventPayload.fromJson(
+                    """
+                    {
+                      "id": "${id}",
+                      "myArray": [
+                        {
+                          "id": "${id}"
+                        }
+                      ]
+                    }
+                    """)
+                .withId("0")
+                .withArray("/myArray", List.of(), EventPayload::withId)
+                .toString())
+        .hasToString(
+            """
+            {
+              "id" : "0",
+              "myArray" : [ ]
+            }\
+            """);
+  }
+
+  @Test
   void longPathInsideArray() {
     assertThat(
-            Payload.fromJson(
+            EventPayload.fromJson(
                     """
                     {
                       "id": "${id}",
@@ -117,11 +142,10 @@ public class PayloadArrayTests {
                     "/my/objects/0/myArray",
                     List.of("1", "2"),
                     (payload, id) -> {
-                      payload.withId(id);
-                      payload.with("value", "myValue");
+                      payload.withId(id).with("value", "myValue");
                     })
                 .toString())
-        .isEqualTo(
+        .hasToString(
             """
             {
               "id" : "0",
@@ -143,7 +167,7 @@ public class PayloadArrayTests {
   @Test
   void nestedArray() {
     assertThat(
-            Payload.fromJson(
+            EventPayload.fromJson(
                     """
                     {
                       "id": "${id}",
@@ -165,17 +189,18 @@ public class PayloadArrayTests {
                     "/firstArray",
                     List.of("1", "2"),
                     (payload, id) -> {
-                      payload.withId(id);
-                      payload.withArray(
-                          "/secondArray",
-                          List.of("3", "4"),
-                          (innerPayload, innerId) -> {
-                            innerPayload.withId(id + " - " + innerId);
-                            innerPayload.with("value", "myValue");
-                          });
+                      payload
+                          .withId(id)
+                          .withArray(
+                              "/secondArray",
+                              List.of("3", "4"),
+                              (innerPayload, innerId) -> {
+                                innerPayload.withId(id + " - " + innerId);
+                                innerPayload.with("value", "myValue");
+                              });
                     })
                 .toString())
-        .isEqualTo(
+        .hasToString(
             """
             {
               "id" : "0",
@@ -206,13 +231,13 @@ public class PayloadArrayTests {
   void isNotAnArray() {
     assertThatThrownBy(
             () ->
-                Payload.fromJson(
+                EventPayload.fromJson(
                         """
                         {
                           "notAnArray": "${value}"
                         }
                         """)
-                    .withArray("/notAnArray", List.of("1", "2"), Payload::withId))
+                    .withArray("/notAnArray", List.of("1", "2"), EventPayload::withId))
         .isInstanceOf(AssertionError.class)
         .hasMessageContaining(
             """
@@ -225,7 +250,7 @@ public class PayloadArrayTests {
 
   @Test
   void isNotAnJsonPath() {
-    assertThatThrownBy(() -> Payload.fromJson("{}").withArray("invalid.path", null, null))
+    assertThatThrownBy(() -> EventPayload.fromJson("{}").withArray("invalid.path", null, null))
         .isInstanceOf(AssertionError.class)
         .hasMessageContaining(
             """
@@ -236,10 +261,10 @@ public class PayloadArrayTests {
   @Test
   void extensionMethod() {
     assertThat(
-            Payload.fromJson("{\"array\": [{\"id\": \"${id}\"}]}")
+            EventPayload.fromJson("{\"array\": [{\"id\": \"${id}\"}]}")
                 .withCustomArray("/array", List.of("1", "2"))
                 .toString())
-        .isEqualTo(
+        .hasToString(
             """
             {
               "array" : [ {

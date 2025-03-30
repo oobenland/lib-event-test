@@ -1,6 +1,6 @@
 package de.obenland.lib.eventest;
 
-import de.obenland.lib.eventtest.Asserter;
+import de.obenland.lib.eventtest.EventAsserter;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -18,44 +18,44 @@ public class RecordInterceptorTests extends AbstractTests {
 
   @Test
   void consumed() {
-    Asserter.sync(sendTestEvent());
-    Asserter.assertEvent().withTopic("test.topic").isConsumed();
+    EventAsserter.sync(sendTestEvent());
+    EventAsserter.assertEvent().withTopic("test.topic").isConsumed();
   }
 
   @Test
   void nothingIsConsumed() {
-    Assertions.assertThatThrownBy(() -> Asserter.assertEvent().withTopic("test.topic").isConsumed())
+    Assertions.assertThatThrownBy(() -> EventAsserter.assertEvent().withTopic("test.topic").isConsumed())
         .isInstanceOf(AssertionError.class)
         .hasMessageContaining(
             """
             ❌\tFound no records
             ❌\tFound no records with topic 'test.topic'\
             """);
-    Assertions.assertThatThrownBy(() -> Asserter.assertEvent().isConsumed())
+    Assertions.assertThatThrownBy(() -> EventAsserter.assertEvent().isConsumed())
         .isInstanceOf(AssertionError.class)
         .hasMessageContaining("❌\tFound no records");
-    Asserter.assertEvent().withTopic("test.topic").none().isConsumed();
+    EventAsserter.assertEvent().withTopic("test.topic").none().isConsumed();
   }
 
   @Test
   void committed() {
-    Asserter.sync(sendTestEvent());
-    Asserter.assertEvent().withTopic("test.topic").isCommitted();
+    EventAsserter.sync(sendTestEvent());
+    EventAsserter.assertEvent().withTopic("test.topic").isCommitted();
   }
 
   @Test
   void nothingIsCommitted() {
     Assertions.assertThatThrownBy(
-            () -> Asserter.assertEvent().withTopic("test.topic").isCommitted())
+            () -> EventAsserter.assertEvent().withTopic("test.topic").isCommitted())
         .isInstanceOf(AssertionError.class)
         .hasMessageContaining(
             """
             ❌\tFound no records
             ❌\tFound no records with topic 'test.topic'\
             """);
-    Assertions.assertThatThrownBy(() -> Asserter.assertEvent().isCommitted())
+    Assertions.assertThatThrownBy(() -> EventAsserter.assertEvent().isCommitted())
         .isInstanceOf(AssertionError.class)
         .hasMessageContaining("❌\tFound no records");
-    Asserter.assertEvent().withTopic("test.topic").none().isCommitted();
+    EventAsserter.assertEvent().withTopic("test.topic").none().isCommitted();
   }
 }

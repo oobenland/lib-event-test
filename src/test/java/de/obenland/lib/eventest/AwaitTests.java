@@ -1,7 +1,7 @@
 package de.obenland.lib.eventest;
 
-import static de.obenland.lib.eventtest.Asserter.awaitEvent;
-import static de.obenland.lib.eventtest.Asserter.sync;
+import static de.obenland.lib.eventtest.EventAsserter.awaitEvent;
+import static de.obenland.lib.eventtest.EventAsserter.sync;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

@@ -31,7 +31,7 @@ public class RecordInterceptor
   private static final List<ConsumerRecord<String, String>> producedRecords =
       new CopyOnWriteArrayList<>();
 
-  public void clear() {
+  public static void clear() {
     consumedRecords.clear();
     committedRecords.clear();
     producedRecords.clear();

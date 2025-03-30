@@ -1,9 +1,9 @@
 package de.obenland.lib.eventest;
 
-import static de.obenland.lib.eventtest.Asserter.*;
+import static de.obenland.lib.eventtest.EventAsserter.*;
 import static org.assertj.core.api.Assertions.*;
 
-import de.obenland.lib.eventtest.Asserter;
+import de.obenland.lib.eventtest.EventAsserter;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.testcontainers.junit.jupiter.Container;
@@ -595,7 +595,7 @@ class AssertTests extends AbstractTests {
         .withKey("test.other.key")
         .withContentType("test.other.contentType")
         .times(10);
-    assertThatThrownBy(Asserter::validate)
+    assertThatThrownBy(EventAsserter::validate)
         .isInstanceOf(AssertionError.class)
         .hasMessageContaining(
             """

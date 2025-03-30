@@ -18,22 +18,22 @@ import org.intellij.lang.annotations.Language;
 import org.skyscreamer.jsonassert.JSONCompareMode;
 import org.springframework.core.io.ClassPathResource;
 
-public class Payload {
+public class EventPayload {
   private static final ObjectMapper objectMapper = new ObjectMapper();
   private final List<String> ignoredPlaceholders = new ArrayList<>();
   private final Map<String, String> placeholderValues = new HashMap<>();
   private String payload;
   @Getter private JSONCompareMode compareMode = JSONCompareMode.LENIENT;
 
-  public Payload(String payload) {
+  public EventPayload(String payload) {
     this.payload = payload;
   }
 
-  public static Payload fromJson(@Language("json") String json) {
-    return new Payload(json);
+  public static EventPayload fromJson(@Language("json") String json) {
+    return new EventPayload(json);
   }
 
-  public static Payload fromFile(String path) {
+  public static EventPayload fromFile(String path) {
     var resource = new ClassPathResource(path);
     try (var inputStream = new FileInputStream(resource.getFile())) {
       return fromJson(new String(inputStream.readAllBytes(), Charset.defaultCharset()));
@@ -42,21 +42,19 @@ public class Payload {
     }
   }
 
-  public Payload withId(String id) {
-    with("id", id);
-    return this;
+  public EventPayload withId(String id) {
+    return with("id", id);
   }
 
-  public Payload withTimestamp(String timestamp) {
-    with("timestamp", timestamp);
-    return this;
+  public EventPayload withTimestamp(String timestamp) {
+    return with("timestamp", timestamp);
   }
 
-  public Payload withTimestamp(Instant timestamp) {
+  public EventPayload withTimestamp(Instant timestamp) {
     return withTimestamp(timestamp.toString());
   }
 
-  public Payload with(String key, Object value) {
+  public EventPayload with(String key, Object value) {
     if (!payload.contains(toPlaceholder(key))) {
       throw new AssertionError(
           "\n❌\tCan not find placeholder '%s' in payload:\n%s"
@@ -72,8 +70,8 @@ public class Payload {
    * @param values each value is used to create one entry in the array
    * @param configurator configures the payload of each entry for each value
    */
-  public <T> Payload withArray(
-      String jsonPath, Collection<T> values, BiConsumer<Payload, T> configurator) {
+  public <T> EventPayload withArray(
+      String jsonPath, Collection<T> values, BiConsumer<EventPayload, T> configurator) {
     JsonPointer jsonPointer;
     try {
       jsonPointer = JsonPointer.compile(jsonPath);
@@ -99,7 +97,7 @@ public class Payload {
       var entry = arrayNode.remove(0);
       values.stream()
           .map(value -> {
-            final var entryPayload = new Payload(entry.toPrettyString());
+            final var entryPayload = new EventPayload(entry.toPrettyString());
             configurator.accept(entryPayload, value);
             return entryPayload;
           })
@@ -120,32 +118,32 @@ public class Payload {
     }
   }
 
-  public Payload lenient() {
+  public EventPayload lenient() {
     compareMode = JSONCompareMode.LENIENT;
     return this;
   }
 
-  public Payload strict() {
+  public EventPayload strict() {
     compareMode = JSONCompareMode.STRICT;
     return this;
   }
 
-  public Payload strictOrder() {
+  public EventPayload strictOrder() {
     compareMode = JSONCompareMode.STRICT_ORDER;
     return this;
   }
 
-  public Payload nonExtensible() {
+  public EventPayload nonExtensible() {
     compareMode = JSONCompareMode.NON_EXTENSIBLE;
     return this;
   }
 
-  public Payload ignorePlaceholder(String ignoredPlaceholder) {
+  public EventPayload ignorePlaceholder(String ignoredPlaceholder) {
     this.ignoredPlaceholders.add(toPlaceholder(ignoredPlaceholder));
     return this;
   }
 
-  public Payload ignorePlaceholders(String... placeholders) {
+  public EventPayload ignorePlaceholders(String... placeholders) {
     for (String placeholder : placeholders) {
       ignorePlaceholder(placeholder);
     }
@@ -180,7 +178,7 @@ public class Payload {
           .collect(Collectors.joining("\n\t🚫\t"));
 
       var ignoredPlaceholdersList = ignoredPlaceholders.stream()
-          .map(Payload::fromPlaceholder)
+          .map(EventPayload::fromPlaceholder)
           .sorted()
           .collect(Collectors.joining("\n\t→\t"));
       var ignoredPlaceholdersMessage = ignoredPlaceholdersList.isEmpty()

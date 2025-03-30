@@ -1,11 +1,14 @@
 package de.obenland.lib.eventest;
 
-import static de.obenland.lib.eventtest.Asserter.assertEvent;
-import static de.obenland.lib.eventtest.Asserter.sync;
+import static de.obenland.lib.eventtest.EventAsserter.assertEvent;
+import static de.obenland.lib.eventtest.EventAsserter.sync;
+import static de.obenland.lib.eventtest.EventPayload.fromFile;
+import static de.obenland.lib.eventtest.EventPayload.fromJson;
 import static org.assertj.core.api.Assertions.*;
 
 import de.obenland.lib.TestPayloadExtensions;
-import de.obenland.lib.eventtest.Payload;
+import de.obenland.lib.eventtest.EventPayload;
+
 import java.time.Instant;
 import lombok.experimental.ExtensionMethod;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +24,7 @@ import org.testcontainers.utility.DockerImageName;
 @Slf4j
 @Testcontainers
 @ExtensionMethod(TestPayloadExtensions.class)
-public class PayloadTests extends AbstractTests {
+public class EventPayloadTests extends AbstractTests {
   @Container @ServiceConnection
   static final ConfluentKafkaContainer kafkaContainer =
       new ConfluentKafkaContainer(DockerImageName.parse(KAFKA_IMAGE));
@@ -39,7 +42,7 @@ public class PayloadTests extends AbstractTests {
     assertEvent()
         .withTopic("test.topic")
         .withPayload(
-            Payload.fromJson(
+            fromJson(
                     """
                     {
                       "id": "${id}"
@@ -69,7 +72,7 @@ public class PayloadTests extends AbstractTests {
                 assertEvent()
                     .withTopic("test.topic")
                     .withPayload(
-                        Payload.fromJson(
+                        fromJson(
                                 """
                                 {
                                   "id": "1234",
@@ -86,7 +89,7 @@ public class PayloadTests extends AbstractTests {
             """
             ☑️\tFound 1 records
             ☑️\tFound 1 records with topic 'test.topic'
-            ❌\tFound no records with payload:
+            ❌\tFound no records with eventPayload:
             \t{
             \t  "id" : "1234",
             \t  "list" : [ "987654321", "12345678" ]
@@ -120,7 +123,7 @@ public class PayloadTests extends AbstractTests {
     assertEvent()
         .withTopic("test.topic")
         .withPayload(
-            Payload.fromJson(
+            fromJson(
                     """
                     {
                       "id": "${id}"
@@ -154,7 +157,7 @@ public class PayloadTests extends AbstractTests {
                 assertEvent()
                     .withTopic("test.topic")
                     .withPayload(
-                        Payload.fromJson(
+                        fromJson(
                                 """
                                 {
                                   "id": "${id}",
@@ -170,7 +173,7 @@ public class PayloadTests extends AbstractTests {
             """
             ☑️\tFound 2 records
             ☑️\tFound 2 records with topic 'test.topic'
-            ❌\tFound no records with payload:
+            ❌\tFound no records with eventPayload:
             \t{
             \t  "id" : "1234",
             \t  "custom" : "12345678"
@@ -214,7 +217,7 @@ public class PayloadTests extends AbstractTests {
                 assertEvent()
                     .withTopic("test.topic")
                     .withPayload(
-                        Payload.fromFile("/test-event.json")
+                        fromFile("/test-event.json")
                             .withId("1234")
                             .with("custom", "12345678")
                             .lenient())
@@ -224,7 +227,7 @@ public class PayloadTests extends AbstractTests {
             """
             ☑️\tFound 2 records
             ☑️\tFound 2 records with topic 'test.topic'
-            ❌\tFound no records with payload:
+            ❌\tFound no records with eventPayload:
             \t{
             \t  "id" : "1234",
             \t  "custom" : "12345678"
@@ -248,7 +251,7 @@ public class PayloadTests extends AbstractTests {
   @Test
   void placeholder() {
     Assertions.assertThat(
-            Payload.fromJson(
+            fromJson(
                     """
                     {
                       "id": "${id}",
@@ -272,7 +275,7 @@ public class PayloadTests extends AbstractTests {
 
   @Test
   void placeholderNotFound() {
-    assertThatThrownBy(() -> Payload.fromJson("{}").withId("12345678"))
+    assertThatThrownBy(() -> fromJson("{}").withId("12345678"))
         .isInstanceOf(AssertionError.class)
         .hasMessageContaining("❌\tCan not find placeholder '${id}' in payload:\n{}");
   }
@@ -281,7 +284,7 @@ public class PayloadTests extends AbstractTests {
   void placeholdersWereNotReplaced() {
     assertThatThrownBy(
         () ->
-            Payload.fromJson(
+            fromJson(
                     """
                     {
                       "id": "${id}",
@@ -316,7 +319,7 @@ public class PayloadTests extends AbstractTests {
   void placeholdersWereNotReplaced_withGivenPlaceholders() {
     assertThatThrownBy(
         () ->
-            Payload.fromJson(
+            fromJson(
                     """
                     {
                       "id": "${id}",
@@ -353,7 +356,7 @@ public class PayloadTests extends AbstractTests {
   void placeholdersWereNotReplaced_withIgnoredPlaceholders() {
     assertThatThrownBy(
             () ->
-                Payload.fromJson("{\"id\": \"${id}\", \"key\": \"${value}\"}")
+                fromJson("{\"id\": \"${id}\", \"key\": \"${value}\"}")
                     .ignorePlaceholders("id", "other")
                     .toString())
         .isInstanceOf(AssertionError.class)
@@ -376,7 +379,7 @@ public class PayloadTests extends AbstractTests {
     assertThatNoException()
         .isThrownBy(
             () ->
-                Payload.fromJson("{\"id\": \"${id}\", \"key\": \"${value}\"}")
+                fromJson("{\"id\": \"${id}\", \"key\": \"${value}\"}")
                     .ignorePlaceholders("id", "value")
                     .toString());
   }
@@ -386,7 +389,7 @@ public class PayloadTests extends AbstractTests {
   void invalidJson() {
     @Language("json")
     var json = new String(new byte[] {'{', 'a'});
-    assertThatThrownBy(() -> log.info("{}", Payload.fromJson(json).toString()))
+    assertThatThrownBy(() -> log.info("{}", fromJson(json).toString()))
         .isInstanceOf(AssertionError.class)
         .hasMessageContaining(
             """
@@ -398,8 +401,8 @@ public class PayloadTests extends AbstractTests {
 
   @Test
   void extensionMethod() {
-    assertThat(Payload.fromJson("{\"custom\": \"${custom}\"}").withCustom("123").toString())
+    assertThat(fromJson("{\"custom\": \"${custom}\"}").withCustom("123").toString())
         .isEqualTo(
-            Payload.fromJson("{\"custom\": \"${custom}\"}").with("custom", "123").toString());
+            fromJson("{\"custom\": \"${custom}\"}").with("custom", "123").toString());
   }
 }

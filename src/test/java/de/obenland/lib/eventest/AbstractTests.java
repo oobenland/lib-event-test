@@ -1,6 +1,6 @@
 package de.obenland.lib.eventest;
 
-import de.obenland.lib.eventtest.Asserter;
+import de.obenland.lib.eventtest.EventAsserter;
 import de.obenland.lib.eventtest.RecordInterceptor;
 import java.util.concurrent.ExecutionException;
 
@@ -22,16 +22,15 @@ abstract class AbstractTests {
   static final String KAFKA_IMAGE = "confluentinc/cp-kafka:7.8.0";
 
   @Autowired KafkaTemplate<String, String> kafkaTemplate;
-  @Autowired RecordInterceptor recordInterceptor;
 
   @BeforeEach
   void setUp() {
-    recordInterceptor.clear();
+    RecordInterceptor.clear();
   }
 
   @AfterEach
   void tearDown() {
-    Asserter.validate();
+    EventAsserter.validate();
   }
 
   SendResult<String, String> sendTestEvent() {
