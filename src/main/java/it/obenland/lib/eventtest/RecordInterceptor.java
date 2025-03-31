@@ -45,18 +45,36 @@ public class RecordInterceptor
   private static final List<ConsumerRecord<String, String>> producedRecords =
       new CopyOnWriteArrayList<>();
 
+
+  /**
+   * Clears all captured records (consumed, committed, and produced records).
+   *
+   * <p>This method must be called before each test or recording session to ensure
+   * no stale data is present.
+   */
   public static void clear() {
     consumedRecords.clear();
     committedRecords.clear();
     producedRecords.clear();
   }
 
+  /**
+   * Intercepts and records all consumed Kafka records.
+   *
+   * @param records The records that were consumed from Kafka.
+   * @return The same set of records as passed, for further processing.
+   */
   @Override
   public ConsumerRecords<String, String> onConsume(ConsumerRecords<String, String> records) {
     records.forEach(consumedRecords::add);
     return records;
   }
 
+  /**
+   * Records committed offsets for consumed records, based on the supplied offsets.
+   *
+   * @param offsets A map of Kafka topic-partitions to their corresponding committed offsets.
+   */
   @Override
   public void onCommit(Map<TopicPartition, OffsetAndMetadata> offsets) {
     for (var entry : offsets.entrySet()) {
@@ -69,18 +87,41 @@ public class RecordInterceptor
     }
   }
 
+  /**
+   * Intercepts and records producer records after transforming them to consumer records.
+   *
+   * @param record The record that is being sent to Kafka.
+   * @return The original producer record, as is, for further processing.
+   */
   @Override
   public ProducerRecord<String, String> onSend(ProducerRecord<String, String> record) {
     producedRecords.add(toConsumerRecord(record));
     return record;
   }
 
+  /**
+   * Acknowledgement callback for producer records. Currently does nothing.
+   *
+   * @param metadata  Metadata about the acknowledged record.
+   * @param exception Exception encountered during acknowledgment, if any.
+   */
   @Override
-  public void onAcknowledgement(RecordMetadata metadata, Exception exception) {}
+  public void onAcknowledgement(RecordMetadata metadata, Exception exception) {
+  }
 
+  /**
+   * Closes the interceptor. No specific clean-up actions are needed for this implementation.
+   */
   @Override
-  public void close() {}
+  public void close() {
+  }
 
+  /**
+   * Configures the interceptor with the provided configuration settings.
+   *
+   * @param configs A map of configuration settings for this interceptor.
+   */
   @Override
-  public void configure(Map<String, ?> configs) {}
+  public void configure(Map<String, ?> configs) {
+  }
 }
