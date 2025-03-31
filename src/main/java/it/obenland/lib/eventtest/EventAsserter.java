@@ -1,4 +1,4 @@
-package de.obenland.lib.eventtest;
+package it.obenland.lib.eventtest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

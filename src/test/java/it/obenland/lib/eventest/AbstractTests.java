@@ -1,7 +1,7 @@
-package de.obenland.lib.eventest;
+package it.obenland.lib.eventest;
 
-import de.obenland.lib.eventtest.EventAsserter;
-import de.obenland.lib.eventtest.RecordInterceptor;
+import it.obenland.lib.eventtest.EventAsserter;
+import it.obenland.lib.eventtest.RecordInterceptor;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;

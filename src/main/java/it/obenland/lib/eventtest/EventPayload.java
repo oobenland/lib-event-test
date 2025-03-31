@@ -1,4 +1,4 @@
-package de.obenland.lib.eventtest;
+package it.obenland.lib.eventtest;
 
 import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.core.JsonProcessingException;

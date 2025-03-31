@@ -1,10 +1,10 @@
-package de.obenland.lib.eventest;
+package it.obenland.lib.eventest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import de.obenland.lib.TestPayloadExtensions;
-import de.obenland.lib.eventtest.EventPayload;
+import it.obenland.lib.TestPayloadExtensions;
+import it.obenland.lib.eventtest.EventPayload;
 import java.util.List;
 import lombok.experimental.ExtensionMethod;
 import lombok.extern.slf4j.Slf4j;

@@ -1,9 +1,9 @@
-package de.obenland.lib.eventest;
+package it.obenland.lib.eventest;
 
-import static de.obenland.lib.eventtest.EventAsserter.*;
+import static it.obenland.lib.eventtest.EventAsserter.*;
 import static org.assertj.core.api.Assertions.*;
 
-import de.obenland.lib.eventtest.EventAsserter;
+import it.obenland.lib.eventtest.EventAsserter;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.testcontainers.junit.jupiter.Container;

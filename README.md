@@ -14,15 +14,15 @@ additional information about other events, which nearly match the assertion.
 Add dependency to pom.xml:
 
     <dependency>
-      <groupId>de.obenland.lib</groupId>
+      <groupId>it.obenland.lib</groupId>
       <artifactId>event-test</artifactId>
       <version>0.0.1-SNAPSHOT</version>
     </dependency>
 
 Configure a Kafka Interceptor to application.properties:
 
-    spring.kafka.consumer.properties.interceptor.classes=de.obenland.lib.eventtest.RecordInterceptor
-    spring.kafka.producer.properties.interceptor.classes=de.obenland.lib.eventtest.RecordInterceptor
+    spring.kafka.consumer.properties.interceptor.classes=it.obenland.lib.eventtest.RecordInterceptor
+    spring.kafka.producer.properties.interceptor.classes=it.obenland.lib.eventtest.RecordInterceptor
 
 The tests have to be configured to clear previous received events, and it's
 encouraged to validate the correct usage of assertions after each test. This
@@ -45,10 +45,8 @@ void tearDown() {
 You can use static imports to improve the readability of your tests:
 
 ```java
-import static de.obenland.lib.eventtest.EventAsserter.assertEvent;
-import static de.obenland.lib.eventtest.EventAsserter.sync;
-import static de.obenland.lib.eventtest.EventPayload.fromFile;
-import static de.obenland.lib.eventtest.EventPayload.fromJson;
+
+
 ```
 
 # Example

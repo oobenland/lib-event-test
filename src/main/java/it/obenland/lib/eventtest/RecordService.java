@@ -1,4 +1,4 @@
-package de.obenland.lib.eventtest;
+package it.obenland.lib.eventtest;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;

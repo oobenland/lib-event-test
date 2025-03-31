@@ -1,6 +1,6 @@
-package de.obenland.lib;
+package it.obenland.lib;
 
-import de.obenland.lib.eventtest.EventPayload;
+import it.obenland.lib.eventtest.EventPayload;
 
 import java.util.List;
 

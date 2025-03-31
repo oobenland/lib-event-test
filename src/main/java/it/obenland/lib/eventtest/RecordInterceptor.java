@@ -1,6 +1,6 @@
-package de.obenland.lib.eventtest;
+package it.obenland.lib.eventtest;
 
-import static de.obenland.lib.eventtest.RecordService.toConsumerRecord;
+import static it.obenland.lib.eventtest.RecordService.toConsumerRecord;
 
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;

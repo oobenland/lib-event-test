@@ -1,13 +1,12 @@
-package de.obenland.lib.eventest;
+package it.obenland.lib.eventest;
 
-import static de.obenland.lib.eventtest.EventAsserter.assertEvent;
-import static de.obenland.lib.eventtest.EventAsserter.sync;
-import static de.obenland.lib.eventtest.EventPayload.fromFile;
-import static de.obenland.lib.eventtest.EventPayload.fromJson;
+import static it.obenland.lib.eventtest.EventAsserter.assertEvent;
+import static it.obenland.lib.eventtest.EventAsserter.sync;
+import static it.obenland.lib.eventtest.EventPayload.fromFile;
+import static it.obenland.lib.eventtest.EventPayload.fromJson;
 import static org.assertj.core.api.Assertions.*;
 
-import de.obenland.lib.TestPayloadExtensions;
-import de.obenland.lib.eventtest.EventPayload;
+import it.obenland.lib.TestPayloadExtensions;
 
 import java.time.Instant;
 import lombok.experimental.ExtensionMethod;
