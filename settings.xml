@@ -1,15 +1,9 @@
 <settings>
   <servers>
     <server>
-      <id>gitlab.oben.link</id>
-      <configuration>
-        <httpHeaders>
-          <property>
-            <name>Job-Token</name>
-            <value>${CI_JOB_TOKEN}</value>
-          </property>
-        </httpHeaders>
-      </configuration>
+      <id>sonatype.central</id>
+      <username>${env.SONATYPE_TOKEN_USERNAME}</username>
+      <password>${env.SONATYPE_TOKEN_PASSWORD}</password>
     </server>
   </servers>
 </settings>

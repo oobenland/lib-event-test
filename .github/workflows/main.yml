@@ -30,4 +30,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Release
-        run: ./mvnw --batch-mode --errors --settings settings.xml release -DskipTests -Dmaven.profile
+        env:
+          SONATYPE_TOKEN_USERNAME: ${{ secrets.SONATYPE_TOKEN_USERNAME }}
+          SONATYPE_TOKEN_PASSWORD: ${{ secrets.SONATYPE_TOKEN_PASSWORD }}
+        run: ./mvnw --batch-mode --errors --settings settings.xml deploy -DskipTests -Dmaven.profile
