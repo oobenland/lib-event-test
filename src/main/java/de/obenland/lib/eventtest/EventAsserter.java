@@ -4,12 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jayway.jsonpath.JsonPath;
-import com.jayway.jsonpath.PathNotFoundException;
 import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.*;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import lombok.SneakyThrows;
@@ -22,13 +23,34 @@ import org.json.JSONException;
 import org.skyscreamer.jsonassert.JSONCompare;
 import org.springframework.kafka.support.SendResult;
 
+/**
+ * The EventAsserter class provides functionality to create and validate assertions of Kafka events.
+ * It allows filtering, validating, and verifying event content based on specific criteria such as
+ * topic, key or headers.
+ *
+ * <p>This class maintains a record of unfinished assertions to ensure all validation checks are
+ * completed. It provides flexibility in building assertions with or without awaiting mechanisms.
+ *
+ * <p>It's encouraged to validate the correct usage of assertions after each test. This checks for
+ * assertions which are set up, but never executed, because the final call to <code>isProduced()
+ * </code>, <code>isConsumed()</code> or <code>isCommitted()</code> is missing.
+ *
+ * <pre>{@code
+ * @AfterEach
+ * void tearDown() {
+ *   EventAsserter.validate();
+ * }
+ * }</pre>
+ */
 @Slf4j
 public class EventAsserter {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final List<EventAsserter> UNFINISHED_EVENT_ASSERTERS = new ArrayList<>();
   private final List<Assertion> assertions = new ArrayList<>();
   private final boolean awaitAssertion;
-  private Function<Supplier<List<ConsumerRecord<String, String>>>, List<ConsumerRecord<String, String>>> assertionFunction;
+  private Function<
+          Supplier<List<ConsumerRecord<String, String>>>, List<ConsumerRecord<String, String>>>
+      assertionFunction;
 
   private EventAsserter(boolean awaitAssertion) {
     this.awaitAssertion = awaitAssertion;
@@ -37,14 +59,19 @@ public class EventAsserter {
   }
 
   /**
-   * @param codeRepresentation an example how this Assertion is created
+   * @param codeRepresentation a string representation of the method call which created this
+   *     assertion. E.g. <code>withTopic(String)</code> has the value <code>
+   *                                   "withTopic(\"" + topic + "\")"</code>, which results in a
+   *     code representation of <code>
+   *                                   withTopic("test.topic")</code> when called with <code>
+   *     "test.topic"</code> as parameter
    * @param filterFunction filters the incoming list of records. Think of the argument of {@link
    *     java.util.stream.Stream#filter(Predicate) Stream::filter}
    * @param assertionConsumer Checks if the filtered records holds the conditions of this assertion
    * @param successDescriptionFunction Creates a human-readable description of how the filtered
    *     records hold the conditions of this assertion
-   * @param failDescriptionFunction Creates a human-readable description of how the incoming list of
-   *     records (unfiltered list) didn't hold the conditions of this assertion
+   * @param failDescriptionFunction Creates a human-readable description of how the unfiltered
+   *     incoming list of records didn't hold the conditions of this assertion
    */
   record Assertion(
       String codeRepresentation,
@@ -53,20 +80,50 @@ public class EventAsserter {
       Function<List<ConsumerRecord<String, String>>, String> successDescriptionFunction,
       Function<List<ConsumerRecord<String, String>>, String> failDescriptionFunction) {}
 
+  /**
+   * Creates and returns an {@code EventAsserter} instance to validate Kafka events synchronously.
+   *
+   * <p>This method does not wait for events and immediately checks for events based on assertions.
+   *
+   * @return a new {@code EventAsserter} instance for event validation
+   */
   @CheckReturnValue
   public static EventAsserter assertEvent() {
     return new EventAsserter(false).addRecordCountAssertion();
   }
 
+  /**
+   * Creates and returns an {@code EventAsserter} instance to validate Kafka events asynchronously.
+   *
+   * <p>This method waits for events to be available before validating assertions.
+   *
+   * @return a new {@code EventAsserter} instance for asynchronous event validation
+   */
   @CheckReturnValue
   public static EventAsserter awaitEvent() {
     return new EventAsserter(true).addRecordCountAssertion();
   }
 
+  /**
+   * Validates and ensures a Kafka {@code SendResult} is properly committed.
+   *
+   * <p>Allows sending a Kafka event using {@link org.springframework.kafka.core.KafkaTemplate#send
+   * KafkaTemplate::send} and waiting for this event to be processed.
+   *
+   * @param sendResult the {@code SendResult} object containing Kafka metadata to validate
+   */
   public static void sync(SendResult<String, String> sendResult) {
     EventAsserter.awaitEvent().withSendResult(sendResult).isCommitted();
   }
 
+  /**
+   * Validates that all assertions created during tests have been executed.
+   *
+   * <p>If any assertions are unfinished, an {@code AssertionError} is thrown with a detailed
+   * message about the pending assertions.
+   *
+   * @throws AssertionError if there are unfinished assertions
+   */
   public static void validate() {
     if (UNFINISHED_EVENT_ASSERTERS.isEmpty()) {
       return;
@@ -80,6 +137,12 @@ public class EventAsserter {
     throw new AssertionError(buffer.toString());
   }
 
+  /**
+   * Filters records to match the specified Kafka {@code SendResult}'s metadata.
+   *
+   * @param sendResult the Kafka {@code SendResult} to match records against
+   * @return this {@code EventAsserter} instance for method chaining
+   */
   @CheckReturnValue
   public EventAsserter withSendResult(SendResult<String, String> sendResult) {
     var topic = sendResult.getRecordMetadata().topic();
@@ -116,6 +179,16 @@ public class EventAsserter {
     return this;
   }
 
+
+  /**
+   * Adds an assertion to filter Kafka records by the specified topic.
+   *
+   * <p>This assertion ensures that the Kafka event records being processed contain the specified
+   * topic. If no records matching the topic are found, the assertion fails.
+   *
+   * @param topic the topic to match in the event records
+   * @return this {@code EventAsserter} instance for method chaining
+   */
   @CheckReturnValue
   public EventAsserter withTopic(String topic) {
     assertions.add(
@@ -142,6 +215,16 @@ public class EventAsserter {
     return this;
   }
 
+  
+  /**
+   * Adds an assertion to filter Kafka records by the specified key.
+   *
+   * <p>This assertion ensures that the Kafka event records being processed contain the specified
+   * key. If no matching records are found, the assertion fails.
+   *
+   * @param key the key to match in the event records
+   * @return this {@code EventAsserter} instance for method chaining
+   */
   @CheckReturnValue
   public EventAsserter withKey(String key) {
     assertions.add(
@@ -168,6 +251,15 @@ public class EventAsserter {
     return this;
   }
 
+  /**
+   * Adds an assertion to filter Kafka records by the specified content type.
+   *
+   * <p>This assertion ensures that the Kafka event records being processed contain the specified
+   * content type. If no matching records are found, the assertion fails.
+   *
+   * @param contentType the content type to match in the event records
+   * @return this {@code EventAsserter} instance for method chaining
+   */
   @CheckReturnValue
   public EventAsserter withContentType(String contentType) {
     assertions.add(
@@ -197,6 +289,15 @@ public class EventAsserter {
     return this;
   }
 
+  /**
+   * Adds an assertion to filter Kafka records by the specified content ID.
+   *
+   * <p>This assertion ensures that the Kafka event records being processed contain the specified
+   * content ID. If no matching records are found, the assertion fails.
+   *
+   * @param contentId the content ID to match in the event records
+   * @return this {@code EventAsserter} instance for method chaining
+   */
   @CheckReturnValue
   public EventAsserter withContentId(String contentId) {
     assertions.add(
@@ -225,50 +326,16 @@ public class EventAsserter {
     return this;
   }
 
-  @CheckReturnValue
-  public EventAsserter withMatchingJsonPath(String jsonPathString) {
-    var jsonPath = JsonPath.compile(jsonPathString);
-    Predicate<String> jsonPathFilterPredicate =
-        json -> {
-          try {
-            return JsonPath.parse(json).read(jsonPath) != null;
-          } catch (PathNotFoundException _) {
-            return false;
-          }
-        };
-    assertions.add(
-        new Assertion(
-            "withMatchingJsonPath(\"" + jsonPathString + "\")",
-            record -> jsonPathFilterPredicate.test(record.value()),
-            records -> assertThat(records).isNotEmpty(),
-            records ->
-                "☑️\tFound %d records with JsonPath '%s'".formatted(records.size(), jsonPathString),
-            records -> {
-              var buffer = new StringBuilder();
-              var recordsWithJsonPath =
-                  records.stream()
-                      .filter(record -> jsonPathFilterPredicate.test(record.value()))
-                      .toList();
-              if (!recordsWithJsonPath.isEmpty()) {
-                buffer
-                    .append("\n\tFound records with JsonPath '")
-                    .append(jsonPathString)
-                    .append("':")
-                    .append("\n\t🚫\t")
-                    .append(
-                        recordsWithJsonPath.stream()
-                            .map(ConsumerRecord::value)
-                            .filter(jsonPathFilterPredicate)
-                            .distinct()
-                            .sorted()
-                            .collect(Collectors.joining("\n\t🚫\t")));
-              }
-              return "❌\tFound no records with JsonPath '%s'%s"
-                  .formatted(jsonPathString, buffer.toString());
-            }));
-    return this;
-  }
-
+  /**
+   * Adds an assertion to filter Kafka records by the specified event payload.
+   *
+   * <p>This assertion ensures that the Kafka event records being processed contain the specified
+   * payload, compared using JSON structure and content. If no matching records are found,
+   * the assertion fails.
+   *
+   * @param eventPayload the payload to match in the event records
+   * @return this {@code EventAsserter} instance for method chaining
+   */
   @CheckReturnValue
   public EventAsserter withPayload(EventPayload eventPayload) {
     assertions.add(
@@ -315,6 +382,15 @@ public class EventAsserter {
     return this;
   }
 
+  /**
+   * Adds an assertion to filter Kafka records by the presence of the specified header.
+   *
+   * <p>This assertion ensures that the Kafka event records being processed include a header with
+   * the specified name. If no matching records are found, the assertion fails.
+   *
+   * @param header the header name to match in the event records
+   * @return this {@code EventAsserter} instance for method chaining
+   */
   @CheckReturnValue
   public EventAsserter withHeader(String header) {
     assertions.add(
@@ -342,6 +418,16 @@ public class EventAsserter {
     return this;
   }
 
+  /**
+   * Adds an assertion to filter Kafka records by the specified header and its string value.
+   *
+   * <p>This assertion ensures that the Kafka event records being processed include a header with
+   * the specified name and value. If no matching records are found, the assertion fails.
+   *
+   * @param header the header name to match in the event records
+   * @param value  the expected value of the header
+   * @return this {@code EventAsserter} instance for method chaining
+   */
   @CheckReturnValue
   public EventAsserter withHeader(String header, String value) {
     final var valueAsBytes = value.getBytes();
@@ -376,6 +462,16 @@ public class EventAsserter {
     return this;
   }
 
+  /**
+   * Adds an assertion to filter Kafka records by the specified header and its byte array value.
+   *
+   * <p>This assertion ensures that the Kafka event records being processed include a header with
+   * the specified name and value as a byte array. If no matching records are found, the assertion fails.
+   *
+   * @param header the header name to match in the event records
+   * @param value  the expected byte array value of the header
+   * @return this {@code EventAsserter} instance for method chaining
+   */
   @CheckReturnValue
   public EventAsserter withHeader(String header, byte[] value) {
     assertions.add(
@@ -409,6 +505,12 @@ public class EventAsserter {
     return this;
   }
 
+  /**
+   * Adds an assertion to ensure that the specified number of Kafka records are present.
+   *
+   * @param times the exact number of records expected
+   * @return this {@code EventAsserter} instance for method chaining
+   */
   @CheckReturnValue
   public EventAsserter times(int times) {
     assertions.add(
@@ -421,6 +523,11 @@ public class EventAsserter {
     return this;
   }
 
+  /**
+   * Asserts that exactly one Kafka event record is present.
+   *
+   * @return this {@code EventAsserter} instance for method chaining
+   */
   @CheckReturnValue
   public EventAsserter one() {
     assertions.add(
@@ -433,6 +540,14 @@ public class EventAsserter {
     return this;
   }
 
+  /**
+   * Adds an assertion to ensure that no Kafka records are present.
+   *
+   * <p>This assertion waits for a short duration to verify the absence of records, and fails
+   * if any records are found during that period.
+   *
+   * @return this {@code EventAsserter} instance for method chaining
+   */
   @CheckReturnValue
   public EventAsserter none() {
     var oldAssertionFunction = assertionFunction;
@@ -451,19 +566,36 @@ public class EventAsserter {
     return this;
   }
 
+  /**
+   * Executes all assertions and retrieves the list of produced Kafka records that match.
+   *
+   * @return the list of produced Kafka records matching the assertions
+   */
   public List<ConsumerRecord<String, String>> isProduced() {
     return assertionFunction.apply(RecordInterceptor::getProducedRecords);
   }
 
+  /**
+   * Executes all assertions and retrieves the list of committed Kafka records that match.
+   *
+   * @return the list of committed Kafka records matching the assertions
+   */
   public List<ConsumerRecord<String, String>> isCommitted() {
     return assertionFunction.apply(RecordInterceptor::getCommittedRecords);
   }
 
+  /**
+   * Executes all assertions and retrieves the list of consumed Kafka records that match.
+   *
+   * @return the list of consumed Kafka records matching the assertions
+   */
   public List<ConsumerRecord<String, String>> isConsumed() {
     return assertionFunction.apply(RecordInterceptor::getConsumedRecords);
   }
 
-  private List<ConsumerRecord<String, String>> doAssert(Supplier<List<ConsumerRecord<String, String>>> recordSupplier) {
+  
+  private List<ConsumerRecord<String, String>> doAssert(
+      Supplier<List<ConsumerRecord<String, String>>> recordSupplier) {
     UNFINISHED_EVENT_ASSERTERS.remove(this);
 
     var records = recordSupplier.get();
@@ -480,7 +612,8 @@ public class EventAsserter {
     }
   }
 
-  private List<ConsumerRecord<String, String>> doAwait(Supplier<List<ConsumerRecord<String, String>>> recordSupplier) {
+  private List<ConsumerRecord<String, String>> doAwait(
+      Supplier<List<ConsumerRecord<String, String>>> recordSupplier) {
     var reference = new AtomicReference<List<ConsumerRecord<String, String>>>();
     Awaitility.await().untilAsserted(() -> reference.set(doAssert(recordSupplier)));
     return reference.get();

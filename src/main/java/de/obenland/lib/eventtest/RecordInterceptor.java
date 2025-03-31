@@ -14,6 +14,20 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.springframework.stereotype.Component;
 
+/**
+ * A Kafka interceptor for both producer and consumer records that provides hooks for intercepting and monitoring
+ * record processing. This class is designed to capture and store records for analysis and testing purposes.
+ *
+ * <p>Before each test case the RecordInterceptor has to be cleared:
+ *
+ * <pre>
+ * {@code
+ * @BeforeEach
+ * void setUp() {
+ *   RecordInterceptor.clear();
+ * }
+ * }</pre>
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j
