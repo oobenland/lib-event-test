@@ -26,6 +26,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: test
     runs-on: ubuntu-latest
+    container:
+      image: eclipse-temurin:23-jdk-alpine
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
