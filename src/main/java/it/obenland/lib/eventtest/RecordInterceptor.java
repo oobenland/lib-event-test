@@ -2,12 +2,17 @@ package it.obenland.lib.eventtest;
 
 import static it.obenland.lib.eventtest.RecordService.toConsumerRecord;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.clients.consumer.ConsumerInterceptor;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.ProducerInterceptor;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
@@ -15,13 +20,13 @@ import org.apache.kafka.common.TopicPartition;
 import org.springframework.stereotype.Component;
 
 /**
- * A Kafka interceptor for both producer and consumer records that provides hooks for intercepting and monitoring
- * record processing. This class is designed to capture and store records for analysis and testing purposes.
+ * A Kafka interceptor for both producer and consumer records that provides hooks for intercepting
+ * and monitoring record processing. This class is designed to capture and store records for
+ * analysis and testing purposes.
  *
  * <p>Before each test case the RecordInterceptor has to be cleared:
  *
- * <pre>
- * {@code
+ * <pre>{@code
  * @BeforeEach
  * void setUp() {
  *   RecordInterceptor.clear();
@@ -45,12 +50,11 @@ public class RecordInterceptor
   private static final List<ConsumerRecord<String, String>> producedRecords =
       new CopyOnWriteArrayList<>();
 
-
   /**
    * Clears all captured records (consumed, committed, and produced records).
    *
-   * <p>This method must be called before each test or recording session to ensure
-   * no stale data is present.
+   * <p>This method must be called before each test or recording session to ensure no stale data is
+   * present.
    */
   public static void clear() {
     consumedRecords.clear();
@@ -66,7 +70,7 @@ public class RecordInterceptor
    */
   @Override
   public ConsumerRecords<String, String> onConsume(ConsumerRecords<String, String> records) {
-    records.forEach(consumedRecords::add);
+    records.forEach(record -> consumedRecords.add(toStringConsumerRecord(record)));
     return records;
   }
 
@@ -95,26 +99,22 @@ public class RecordInterceptor
    */
   @Override
   public ProducerRecord<String, String> onSend(ProducerRecord<String, String> record) {
-    producedRecords.add(toConsumerRecord(record));
+    producedRecords.add(toConsumerRecord(toStringProducerRecord(record)));
     return record;
   }
 
   /**
    * Acknowledgement callback for producer records. Currently does nothing.
    *
-   * @param metadata  Metadata about the acknowledged record.
+   * @param metadata Metadata about the acknowledged record.
    * @param exception Exception encountered during acknowledgment, if any.
    */
   @Override
-  public void onAcknowledgement(RecordMetadata metadata, Exception exception) {
-  }
+  public void onAcknowledgement(RecordMetadata metadata, Exception exception) {}
 
-  /**
-   * Closes the interceptor. No specific clean-up actions are needed for this implementation.
-   */
+  /** Closes the interceptor. No specific clean-up actions are needed for this implementation. */
   @Override
-  public void close() {
-  }
+  public void close() {}
 
   /**
    * Configures the interceptor with the provided configuration settings.
@@ -122,6 +122,49 @@ public class RecordInterceptor
    * @param configs A map of configuration settings for this interceptor.
    */
   @Override
-  public void configure(Map<String, ?> configs) {
+  public void configure(Map<String, ?> configs) {}
+
+  private ConsumerRecord<String, String> toStringConsumerRecord(ConsumerRecord<String, String> record) {
+    return new ConsumerRecord<>(
+        record.topic(),
+        record.partition(),
+        record.offset(),
+        record.timestamp(),
+        record.timestampType(),
+        record.serializedKeySize(),
+        record.serializedValueSize(),
+        toString(record.key()),
+        toString(record.value()),
+        record.headers(),
+        record.leaderEpoch());
+  }
+
+  private ProducerRecord<String, String> toStringProducerRecord(ProducerRecord<String, String> record) {
+    final var string = toString(record.key());
+    return new ProducerRecord<>(
+        record.topic(),
+        record.partition(),
+        record.timestamp(),
+        string,
+        toString(record.value()),
+        record.headers());
+  }
+
+  /**
+   * Converts the input object to its string representation based on its type.
+   * <p>
+   * When using Kafka Streams this interceptor receives byte[], even though a String is expected.
+   *
+   * @param input the object to be converted to a string representation. Currently supported: String, byte[], null
+   * @return the string representation of the input object if supported; returns null for a null input.
+   * @throws IllegalArgumentException if the input object type is not supported.
+   */
+  private static String toString(Object input) {
+    return switch(input) {
+      case byte[] bytes -> new String(bytes);
+      case String s -> s;
+      case null -> null;
+      default -> throw new IllegalArgumentException("Unsupported type: " + input.getClass());
+    };
   }
 }

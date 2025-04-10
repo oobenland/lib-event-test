@@ -5,23 +5,37 @@ import static it.obenland.lib.eventtest.EventAsserter.sync;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import it.obenland.lib.eventtest.EventPayload;
+import java.util.HashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.kafka.ConfluentKafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
+@Slf4j
 @Testcontainers
 class AwaitTests extends AbstractTests {
   @Container @ServiceConnection
   static final ConfluentKafkaContainer kafkaContainer =
       new ConfluentKafkaContainer(DockerImageName.parse(KAFKA_IMAGE));
+
+  @Autowired private ProducerFactory<String, String> producerFactory;
 
   @BeforeAll
   static void beforeAll() {
@@ -39,9 +53,7 @@ class AwaitTests extends AbstractTests {
         .isInstanceOf(ConditionTimeoutException.class);
     sendTestEvent();
     var events = awaitEvent().isProduced();
-    assertThat(events).hasSize(1)
-        .first()
-        .satisfies(this::assertIsTestEvent);
+    assertThat(events).hasSize(1).first().satisfies(this::assertIsTestEvent);
   }
 
   @Test
@@ -50,9 +62,7 @@ class AwaitTests extends AbstractTests {
         .isInstanceOf(ConditionTimeoutException.class);
     sendTestEvent();
     var events = awaitEvent().isCommitted();
-    assertThat(events).hasSize(1)
-        .first()
-        .satisfies(this::assertIsTestEvent);
+    assertThat(events).hasSize(1).first().satisfies(this::assertIsTestEvent);
   }
 
   @Test
@@ -61,9 +71,7 @@ class AwaitTests extends AbstractTests {
         .isInstanceOf(ConditionTimeoutException.class);
     sendTestEvent();
     var events = awaitEvent().isConsumed();
-    assertThat(events).hasSize(1)
-        .first()
-        .satisfies(this::assertIsTestEvent);
+    assertThat(events).hasSize(1).first().satisfies(this::assertIsTestEvent);
   }
 
   @Test
@@ -313,5 +321,41 @@ class AwaitTests extends AbstractTests {
     sync(sendTestEvent());
     assertThatThrownBy(() -> awaitEvent().none().isProduced())
         .isInstanceOf(ConditionTimeoutException.class);
+  }
+
+  @Test
+  void canProcessByteArrayEvents() throws ExecutionException, InterruptedException {
+    var configProps = new HashMap<>(producerFactory.getConfigurationProperties());
+    configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
+    configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
+    var byteArrayKafkaTemplate =
+        new KafkaTemplate<>(new DefaultKafkaProducerFactory<byte[], byte[]>(configProps));
+
+    var serializer = new StringSerializer();
+
+    byteArrayKafkaTemplate
+        .send(
+            "test.topic",
+            serializer.serialize("test.topic", "test.key"),
+            serializer.serialize(
+                "test.topic",
+                """
+                {
+                  "id": 1
+                }
+                """))
+        .get();
+
+    awaitEvent()
+        .withTopic("test.topic")
+        .withKey("test.key")
+        .withPayload(
+            EventPayload.fromJson(
+                """
+                {
+                          "id": 1
+                }
+                """))
+        .isProduced();
   }
 }
