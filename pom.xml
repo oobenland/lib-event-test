@@ -6,7 +6,7 @@
 
     <groupId>it.obenland.lib</groupId>
     <artifactId>event-test</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.1</version>
     <packaging>jar</packaging>
 
     <name>libEventTest</name>
